@@ -293,7 +293,8 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         ServerLevel serverLevel = (ServerLevel) level.getLevel();
         
         // 验证区块状态
-        if (!chunkManager.isChunkSafeForPlacement(serverLevel, surfacePos)) {
+        var chunkValidationResult = chunkManager.validateChunkState(serverLevel, surfacePos);
+        if (!chunkValidationResult.isSafe()) {
             LOGGER.debug("Chunk at {} is not safe for road placement, skipping", surfacePos);
             return;
         }
@@ -322,8 +323,11 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         );
         
         // 根据冲突解决结果决定是否放置道路
-        if (resolutionResult.shouldPlace()) {
-            level.setBlock(surfacePos.below(), resolutionResult.getFinalBlockState(), 3);
+        if (resolutionResult.isSuccessful()) {
+            BlockPos placementPos = resolutionResult.needsHeightAdjustment() 
+                ? resolutionResult.getAdjustedPosition() 
+                : surfacePos.below();
+            level.setBlock(placementPos, material, 3);
             
             // 清理道路上方的方块
             for (int i = 0; i < CLEAR_HEIGHT_ABOVE_ROAD; i++) {
@@ -342,11 +346,11 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
             }
             
             // 记录冲突解决信息
-            if (resolutionResult.hasConflict()) {
-                LOGGER.debug("Block conflict resolved at {}: {}", surfacePos, resolutionResult.getResolutionMessage());
+            if (resolutionResult.isBlockPreserved()) {
+                LOGGER.debug("Block conflict resolved at {}: {}", surfacePos, resolutionResult.generateReport());
             }
         } else {
-            LOGGER.debug("Road placement skipped at {} due to conflict resolution: {}", surfacePos, resolutionResult.getResolutionMessage());
+            LOGGER.debug("Road placement skipped at {} due to conflict resolution: {}", surfacePos, resolutionResult.generateReport());
         }
     }
 

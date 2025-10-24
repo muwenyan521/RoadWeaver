@@ -11,11 +11,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Road {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("roadweaver");
 
     private final ServerLevel serverWorld;
     private final Records.StructureConnection structureConnection;

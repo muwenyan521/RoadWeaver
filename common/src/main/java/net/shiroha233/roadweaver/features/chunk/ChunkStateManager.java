@@ -229,14 +229,39 @@ public class ChunkStateManager {
      * 检查区块状态
      */
     private ChunkState checkChunkState(ServerLevel level, ChunkPos chunkPos) {
+        // 使用Minecraft的区块状态检查方法
         boolean isLoaded = level.hasChunk(chunkPos.x, chunkPos.z);
         boolean isAccessible = false;
         boolean isGenerated = false;
+        boolean isTerrainGenerated = false;
         
         if (isLoaded) {
             var chunk = level.getChunk(chunkPos.x, chunkPos.z);
-            isAccessible = chunk != null;
-            isGenerated = chunk != null && chunk.getStatus().isOrAfter(ChunkStatus.FULL);
+            if (chunk != null) {
+                isAccessible = true;
+                
+                // 检查区块生成状态
+                ChunkStatus status = chunk.getStatus();
+                isGenerated = status.isOrAfter(ChunkStatus.FULL);
+                isTerrainGenerated = status.isOrAfter(ChunkStatus.STRUCTURE_STARTS);
+                
+                // 对于道路放置，我们至少需要地形生成完成
+                if (!isTerrainGenerated) {
+                    // 如果地形未生成，尝试触发生成
+                    try {
+                        level.getChunkSource().getGenerator().createBiomes(
+                            level.getRegistryAccess(), 
+                            level.getChunkSource().randomState(), 
+                            level.getStructureManager(), 
+                            chunk
+                        );
+                        isTerrainGenerated = true;
+                    } catch (Exception e) {
+                        // 生成失败，区块不可用
+                        isAccessible = false;
+                    }
+                }
+            }
         }
         
         return new ChunkState(chunkPos, isLoaded, isAccessible, isGenerated, System.currentTimeMillis());
@@ -274,22 +299,42 @@ public class ChunkStateManager {
      */
     private boolean forceLoadChunkInternal(ServerLevel level, ChunkPos chunkPos) {
         try {
-            // 使用Minecraft的区块加载系统
+            // 使用Minecraft的区块强制加载系统
             level.setChunkForced(chunkPos.x, chunkPos.z, true);
             
-            // 等待区块生成完成
+            // 获取区块，如果不存在则生成
             var chunk = level.getChunk(chunkPos.x, chunkPos.z);
-            if (chunk != null && !chunk.getStatus().isOrAfter(ChunkStatus.FULL)) {
-                // 如果区块未完全生成，强制生成
-                level.getChunkSource().getGenerator().createBiomes(
-                    level.getChunkSource().randomState(),
-                    chunk,
-                    level.getChunkSource().getGenerator().getBiomeSource(),
-                    level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.BIOME)
-                );
+            if (chunk == null) {
+                // 如果区块不存在，使用区块源生成
+                chunk = level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, true);
             }
             
-            return true;
+            // 确保区块完全生成
+            if (chunk != null && !chunk.getStatus().isOrAfter(ChunkStatus.FULL)) {
+                // 使用适当的区块生成方法
+                // 通过获取区块的所有部分来触发完整生成
+                level.getChunkSource().getGenerator().createBiomes(level.getRegistryAccess(), 
+                    level.getChunkSource().randomState(), level.getStructureManager(), chunk);
+                
+                // 生成地形特征
+                level.getChunkSource().getGenerator().createReferences(level, chunk);
+                
+                // 生成结构
+                level.getChunkSource().getGenerator().applyBiomeDecoration(level, chunk, 
+                    level.getChunkSource().randomState());
+            }
+            
+            // 验证区块是否已完全生成并可访问
+            if (chunk != null && chunk.getStatus().isOrAfter(ChunkStatus.FEATURES)) {
+                // 更新区块状态缓存
+                long chunkKey = getChunkKey(chunkPos);
+                chunkStateCache.put(chunkKey, new ChunkState(
+                    chunkPos, true, true, true, System.currentTimeMillis()
+                ));
+                return true;
+            }
+            
+            return false;
         } catch (Exception e) {
             // 记录错误但继续执行
             System.err.println("Failed to force load chunk at " + chunkPos + ": " + e.getMessage());
@@ -309,7 +354,6 @@ public class ChunkStateManager {
         // 重要方块类型
         if (block.defaultBlockState().is(net.minecraft.tags.BlockTags.DOORS) ||
             block.defaultBlockState().is(net.minecraft.tags.BlockTags.BEDS) ||
-            block.defaultBlockState().is(net.minecraft.tags.BlockTags.CHESTS) ||
             block.defaultBlockState().is(net.minecraft.tags.BlockTags.SIGNS) ||
             block.defaultBlockState().is(net.minecraft.tags.BlockTags.BANNERS)) {
             return true;
