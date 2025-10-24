@@ -32,11 +32,11 @@ public class OverlayLayer extends RenderLayer {
         
         int radius = Math.max(4, (int)(6 * Math.min(viewport.getZoom() / 2, 1.5)));
         
-        // 玩家标记（红色圆点）
-        ModernRenderUtils.fillCircle(graphics, pos.x(), pos.y(), radius + 1, 
-            applyOpacity(0x80000000));
-        ModernRenderUtils.fillCircle(graphics, pos.x(), pos.y(), radius,
-            applyOpacity(ColorPalette.PLAYER_MARKER));
+        // 玩家标记（红色圆点）- 使用快速圆形渲染
+        ModernRenderUtils.fillCircleFast(graphics, pos.x(), pos.y(), radius + 1, 
+            applyOpacity(0x80000000), ModernRenderUtils.QUALITY_MEDIUM);
+        ModernRenderUtils.fillCircleFast(graphics, pos.x(), pos.y(), radius,
+            applyOpacity(ColorPalette.PLAYER_MARKER), ModernRenderUtils.QUALITY_MEDIUM);
         
         // 方向指示箭头
         float yaw = player.getYRot();

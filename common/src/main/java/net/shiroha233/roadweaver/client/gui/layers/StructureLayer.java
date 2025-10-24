@@ -10,6 +10,7 @@ import net.shiroha233.roadweaver.client.gui.core.RenderLayer;
 import net.shiroha233.roadweaver.client.gui.util.ModernRenderUtils;
 import net.shiroha233.roadweaver.helpers.Records;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,25 +104,28 @@ public class StructureLayer extends RenderLayer {
         // 更新LOD系统
         lodManager.update();
         
-        // 更新悬停状态
-        updateHoveredStructure(mouseX, mouseY);
-        
-        // 获取可见范围
-        MapViewport.ViewBounds bounds = viewport.getVisibleWorldBounds();
+        // 更新悬停状态（仅在需要时）
+        if (lodManager.shouldRenderHoverBorder() || lodManager.shouldRenderSelectionAnimation()) {
+            updateHoveredStructure(mouseX, mouseY);
+        } else {
+            hoveredStructure = null;
+        }
         
         // 获取LOD参数
         int nodeRadius = lodManager.getNodeRadius();
         int circleQuality = lodManager.getCircleQuality();
         
-        // 绘制所有结构节点
+        // 批量渲染优化：预计算可见结构
+        List<Records.StructureInfo> visibleStructures = new ArrayList<>();
         for (Records.StructureInfo info : structures) {
-            BlockPos pos = info.pos();
-            
-            // 视锥剔除（LOD优化）
-            if (!lodManager.isPointVisible(pos)) {
-                continue;
+            if (lodManager.isPointVisible(info.pos())) {
+                visibleStructures.add(info);
             }
-            
+        }
+        
+        // 批量渲染可见结构
+        for (Records.StructureInfo info : visibleStructures) {
+            BlockPos pos = info.pos();
             MapViewport.ScreenCoord screen = viewport.worldToScreen(pos.getX(), pos.getZ());
             
             // 渲染节点

@@ -58,13 +58,13 @@ public class LODManager {
     private static final double ZOOM_ULTRA_LOW_THRESHOLD = 0.4;
     
     /** 低细节缩放阈值 - 远距离观察 */
-    private static final double ZOOM_LOW_THRESHOLD = 3.0;
+    private static final double ZOOM_LOW_THRESHOLD = 1.5;
     
     /** 中等细节缩放阈值 - 中距离观察 */
-    private static final double ZOOM_MEDIUM_THRESHOLD = 6.0;
+    private static final double ZOOM_MEDIUM_THRESHOLD = 3.0;
     
     /** 高细节缩放阈值 - 近距离观察（用户反馈此级别最流畅） */
-    private static final double ZOOM_HIGH_THRESHOLD = 7.0;
+    private static final double ZOOM_HIGH_THRESHOLD = 5.0;
     
     // ==================== 渲染参数常量 ====================
     
@@ -87,13 +87,13 @@ public class LODManager {
     private static final int NODE_BASE_RADIUS = 5;
     
     /** 圆形渲染质量 - 低细节（使用快速方形近似） */
-    private static final int CIRCLE_QUALITY_LOW = 1;
+    private static final int CIRCLE_QUALITY_LOW = 0; // QUALITY_FAST
     
     /** 圆形渲染质量 - 中等细节（使用八边形近似） */
-    private static final int CIRCLE_QUALITY_MEDIUM = 3;
+    private static final int CIRCLE_QUALITY_MEDIUM = 1; // QUALITY_MEDIUM
     
     /** 圆形渲染质量 - 高细节（使用完整圆形） */
-    private static final int CIRCLE_QUALITY_HIGH = 5;
+    private static final int CIRCLE_QUALITY_HIGH = 2; // QUALITY_HIGH
     
     // ==================== 实例变量 ====================
     
