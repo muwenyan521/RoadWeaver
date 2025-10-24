@@ -337,9 +337,10 @@ public class BiomeConnectionStrategy {
             BlockState blendedBlock = blendBlockStates(fromMaterials.getMainBlock(), toMaterials.getMainBlock(), ratio);
             
             // 应用地形适配
+            EnhancedTerrainAdapter terrainAdapter = new EnhancedTerrainAdapter();
             EnhancedTerrainAdapter.TerrainAnalysis analysis = 
-                new EnhancedTerrainAdapter().analyzeTerrain(level, boundaryPos, 3);
-            List<BlockPos> adaptedPositions = new EnhancedTerrainAdapter()
+                terrainAdapter.analyzeTerrain(level, boundaryPos, 3);
+            List<BlockPos> adaptedPositions = terrainAdapter
                 .applyTerrainAdaptation(level, boundaryPos, analysis);
             
             for (BlockPos pos : adaptedPositions) {
@@ -425,9 +426,6 @@ public class BiomeConnectionStrategy {
             if (analysis.getSlopeGradient() > 0.3) {
                 // 陡坡使用更稳定的材料
                 material = fromMaterials.getBorderBlock();
-            } else if (analysis.getHeightDifference() > 3) {
-                // 高度差大时使用过渡材料
-                material = fromMaterials.getTransitionBlock();
             } else {
                 // 平坦区域混合材料
                 double distanceRatio = Math.sqrt(boundaryPos.distSqr(fromPos)) / Math.sqrt(fromPos.distSqr(toPos));

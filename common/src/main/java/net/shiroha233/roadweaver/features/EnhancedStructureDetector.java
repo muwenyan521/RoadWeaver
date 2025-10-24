@@ -13,6 +13,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -408,7 +409,7 @@ public class EnhancedStructureDetector {
         // 获取所有结构
         Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         
-        for (Holder<Structure> structure : registry.stream().map(entry -> entry).toList()) {
+        for (Holder<Structure> structure : registry.stream().toList()) {
             StructureDetectionConfig.StructureType type = getStructureType(level, structure);
             stats.put(type, stats.getOrDefault(type, 0) + 1);
         }

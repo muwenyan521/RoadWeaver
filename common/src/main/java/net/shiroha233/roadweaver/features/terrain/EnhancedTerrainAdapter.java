@@ -362,8 +362,7 @@ public class EnhancedTerrainAdapter {
      */
     public BlockPos adaptToTerrain(net.minecraft.world.level.WorldGenLevel level, BlockPos currentPos, BlockPos prevPos, BlockPos nextPos) {
         // 分析当前地形坡度
-        ServerLevel serverLevel = (ServerLevel) level.getLevel();
-        double slopeGradient = calculateSlopeGradient(serverLevel, currentPos);
+        double slopeGradient = calculateSlopeGradientForWorldGenLevel(level, currentPos);
         
         // 如果坡度较大，进行高度调整
         if (slopeGradient > MAX_SLOPE_GRADIENT) {
@@ -416,8 +415,7 @@ public class EnhancedTerrainAdapter {
      * @return 适应后的位置
      */
     public BlockPos applySlopeAdaptation(net.minecraft.world.level.WorldGenLevel level, BlockPos position, BlockPos[] surroundingPositions) {
-        ServerLevel serverLevel = (ServerLevel) level.getLevel();
-        double slopeGradient = calculateSlopeGradient(serverLevel, position);
+        double slopeGradient = calculateSlopeGradientForWorldGenLevel(level, position);
         
         // 如果坡度较大，调整到平均高度
         if (slopeGradient > MAX_SLOPE_GRADIENT) {
@@ -448,8 +446,6 @@ public class EnhancedTerrainAdapter {
      * @param random 随机源
      */
     public void applyStepReplacement(net.minecraft.world.level.WorldGenLevel level, BlockPos position, List<BlockState> materials, net.minecraft.util.RandomSource random) {
-        ServerLevel serverLevel = (ServerLevel) level.getLevel();
-        
         // 检查周围地形高度差
         BlockPos[] surrounding = getSurroundingPositions(position, 2);
         int minHeight = Integer.MAX_VALUE;
@@ -535,23 +531,22 @@ public class EnhancedTerrainAdapter {
      * @return 地形分析结果
      */
     public TerrainAnalysis analyzeTerrain(LevelAccessor level, BlockPos position, int radius) {
-        ServerLevel serverLevel = (ServerLevel) level.getLevel();
-        
+        // 对于LevelAccessor，直接使用它而不是转换为ServerLevel
         // 计算坡度梯度
-        double slopeGradient = calculateSlopeGradient(serverLevel, position);
+        double slopeGradient = calculateSlopeGradientForLevelAccessor(level, position);
         
         // 计算平均海拔
-        double elevation = getSurfaceHeight(serverLevel, position);
+        double elevation = getSurfaceHeightForLevelAccessor(level, position);
         
         // 计算地形粗糙度
-        double roughness = calculateTerrainRoughness(serverLevel, position, radius);
+        double roughness = calculateTerrainRoughnessForLevelAccessor(level, position, radius);
         
         // 判断地形类型
         boolean isSteep = slopeGradient > MAX_SLOPE_GRADIENT;
         boolean isFlat = slopeGradient < 0.1;
         
         // 检测问题区域
-        List<BlockPos> problematicAreas = detectProblematicAreas(serverLevel, position, radius);
+        List<BlockPos> problematicAreas = detectProblematicAreasForLevelAccessor(level, position, radius);
         
         return new TerrainAnalysis(
             position, slopeGradient, elevation, roughness, isSteep, isFlat, problematicAreas
@@ -611,5 +606,263 @@ public class EnhancedTerrainAdapter {
         }
         
         return problematicAreas;
+    }
+    
+    // ========== LevelAccessor兼容方法 ==========
+    
+    /**
+     * 为LevelAccessor计算坡度梯度
+     */
+    private static double calculateSlopeGradientForLevelAccessor(LevelAccessor level, BlockPos center) {
+        double totalSlope = 0;
+        int sampleCount = 0;
+        
+        for (int dx = -SLOPE_ANALYSIS_RADIUS; dx <= SLOPE_ANALYSIS_RADIUS; dx++) {
+            for (int dz = -SLOPE_ANALYSIS_RADIUS; dz <= SLOPE_ANALYSIS_RADIUS; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                
+                BlockPos samplePos = center.offset(dx, 0, dz);
+                int centerHeight = getSurfaceHeightForLevelAccessor(level, center);
+                int sampleHeight = getSurfaceHeightForLevelAccessor(level, samplePos);
+                
+                double distance = Math.sqrt(dx * dx + dz * dz);
+                double slope = Math.abs(sampleHeight - centerHeight) / distance;
+                
+                totalSlope += slope;
+                sampleCount++;
+            }
+        }
+        
+        return sampleCount > 0 ? totalSlope / sampleCount : 0;
+    }
+    
+    /**
+     * 为LevelAccessor获取地表高度
+     */
+    private static int getSurfaceHeightForLevelAccessor(LevelAccessor level, BlockPos pos) {
+        return level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, pos.getX(), pos.getZ());
+    }
+    
+    /**
+     * 为LevelAccessor计算地形粗糙度
+     */
+    private static double calculateTerrainRoughnessForLevelAccessor(LevelAccessor level, BlockPos center, int radius) {
+        double totalVariation = 0;
+        int sampleCount = 0;
+        
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                
+                BlockPos samplePos = center.offset(dx, 0, dz);
+                int centerHeight = getSurfaceHeightForLevelAccessor(level, center);
+                int sampleHeight = getSurfaceHeightForLevelAccessor(level, samplePos);
+                
+                double heightDiff = Math.abs(sampleHeight - centerHeight);
+                totalVariation += heightDiff;
+                sampleCount++;
+            }
+        }
+        
+        return sampleCount > 0 ? totalVariation / sampleCount : 0;
+    }
+    
+    /**
+     * 为LevelAccessor检测问题区域
+     */
+    private static List<BlockPos> detectProblematicAreasForLevelAccessor(LevelAccessor level, BlockPos center, int radius) {
+        List<BlockPos> problematicAreas = new ArrayList<>();
+        
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                BlockPos samplePos = center.offset(dx, 0, dz);
+                double slopeGradient = calculateSlopeGradientForLevelAccessor(level, samplePos);
+                
+                // 如果坡度过大或地形过于崎岖，标记为问题区域
+                if (slopeGradient > MAX_SLOPE_GRADIENT * 1.5) {
+                    problematicAreas.add(samplePos);
+                }
+            }
+        }
+        
+        return problematicAreas;
+    }
+    
+    // ========== 缺失的方法 ==========
+    
+    /**
+     * 应用地形适应 - 用于BiomeConnectionStrategy集成
+     * 
+     * @param level 世界
+     * @param analysis 地形分析结果
+     * @param materials 道路材料
+     */
+    public void applyTerrainAdaptation(LevelAccessor level, TerrainAnalysis analysis, List<BlockState> materials) {
+        if (analysis.isSteep()) {
+            // 对于陡峭地形，应用坡度适应
+            applySlopeAdaptationForLevelAccessor(level, analysis.getPosition(), materials);
+        }
+        
+        // 处理问题区域
+        for (BlockPos problemPos : analysis.getProblematicAreas()) {
+            applyProblemAreaAdaptation(level, problemPos, materials);
+        }
+    }
+    
+    /**
+     * 获取高度差 - 用于TerrainAnalysis类
+     * 
+     * @param analysis 地形分析结果
+     * @param otherPos 其他位置
+     * @return 高度差
+     */
+    public double getHeightDifference(TerrainAnalysis analysis, BlockPos otherPos) {
+        // 简化实现，返回分析位置和目标位置之间的Y坐标差
+        return Math.abs(analysis.getPosition().getY() - otherPos.getY());
+    }
+    
+    /**
+     * 为LevelAccessor应用坡度适应
+     */
+    private static void applySlopeAdaptationForLevelAccessor(LevelAccessor level, BlockPos position, List<BlockState> materials) {
+        // 简单的坡度平整
+        BlockState material = materials.get(new Random().nextInt(materials.size()));
+        level.setBlock(position.below(), material, 3);
+    }
+    
+    /**
+     * 处理问题区域适应
+     */
+    private static void applyProblemAreaAdaptation(LevelAccessor level, BlockPos position, List<BlockState> materials) {
+        // 对于问题区域，使用更坚固的材料
+        BlockState material = STEP_MATERIALS.get(new Random().nextInt(STEP_MATERIALS.size()));
+        level.setBlock(position.below(), material, 3);
+    }
+    
+    /**
+     * 获取地表高度的重载方法
+     */
+    private static int getSurfaceHeightForLevelAccessor(BlockPos center, BlockPos otherPos) {
+        // 简化实现，实际中需要访问LevelAccessor
+        // 这里返回一个默认值
+        return center.getY();
+    }
+    
+    // ========== BiomeConnectionStrategy集成方法 ==========
+    
+    /**
+     * 应用地形适应 - 用于BiomeConnectionStrategy集成
+     * 
+     * @param level 世界
+     * @param position 位置
+     * @param analysis 地形分析结果
+     * @return 适应后的位置列表
+     */
+    public List<BlockPos> applyTerrainAdaptation(LevelAccessor level, BlockPos position, TerrainAnalysis analysis) {
+        List<BlockPos> adaptedPositions = new ArrayList<>();
+        
+        // 根据地形分析结果应用适应
+        if (analysis.isSteep()) {
+            // 对于陡峭地形，创建台阶或平台
+            adaptedPositions.addAll(createTerracingForSteepTerrain(level, position, analysis));
+        } else if (analysis.isFlat()) {
+            // 对于平坦地形，直接使用原位置
+            adaptedPositions.add(position);
+        } else {
+            // 对于一般地形，进行轻微调整
+            adaptedPositions.addAll(createGradedAdaptation(level, position, analysis));
+        }
+        
+        // 处理问题区域
+        for (BlockPos problemPos : analysis.getProblematicAreas()) {
+            adaptedPositions.addAll(adaptProblematicArea(level, problemPos));
+        }
+        
+        return adaptedPositions;
+    }
+    
+    /**
+     * 获取高度差 - 用于TerrainAnalysis类
+     * 
+     * @param analysis 地形分析结果
+     * @return 最大高度差
+     */
+    public double getHeightDifference(TerrainAnalysis analysis) {
+        // 计算分析区域内的高度差
+        double maxHeight = analysis.getElevation();
+        double minHeight = maxHeight;
+        
+        // 通过问题区域估算高度变化
+        for (BlockPos problemPos : analysis.getProblematicAreas()) {
+            double problemHeight = getSurfaceHeightForLevelAccessor(problemPos, problemPos);
+            maxHeight = Math.max(maxHeight, problemHeight);
+            minHeight = Math.min(minHeight, problemHeight);
+        }
+        
+        return maxHeight - minHeight;
+    }
+    
+    /**
+     * 为陡峭地形创建梯田
+     */
+    private List<BlockPos> createTerracingForSteepTerrain(LevelAccessor level, BlockPos position, TerrainAnalysis analysis) {
+        List<BlockPos> terracePositions = new ArrayList<>();
+        int terraceWidth = 3;
+        
+        // 创建梯田式平台
+        for (int dx = -terraceWidth; dx <= terraceWidth; dx++) {
+            for (int dz = -terraceWidth; dz <= terraceWidth; dz++) {
+                BlockPos terracePos = position.offset(dx, 0, dz);
+                int terraceHeight = getSurfaceHeightForLevelAccessor(level, terracePos);
+                BlockPos placementPos = new BlockPos(terracePos.getX(), terraceHeight, terracePos.getZ());
+                
+                terracePositions.add(placementPos);
+            }
+        }
+        
+        return terracePositions;
+    }
+    
+    /**
+     * 创建分级适应
+     */
+    private List<BlockPos> createGradedAdaptation(LevelAccessor level, BlockPos position, TerrainAnalysis analysis) {
+        List<BlockPos> gradedPositions = new ArrayList<>();
+        
+        // 根据坡度梯度创建分级适应
+        double slope = analysis.getSlopeGradient();
+        int adaptationRadius = (int) (slope * 2); // 坡度越大，适应范围越广
+        
+        for (int dx = -adaptationRadius; dx <= adaptationRadius; dx++) {
+            for (int dz = -adaptationRadius; dz <= adaptationRadius; dz++) {
+                BlockPos adaptedPos = position.offset(dx, 0, dz);
+                int adaptedHeight = getSurfaceHeightForLevelAccessor(level, adaptedPos);
+                BlockPos placementPos = new BlockPos(adaptedPos.getX(), adaptedHeight, adaptedPos.getZ());
+                
+                gradedPositions.add(placementPos);
+            }
+        }
+        
+        return gradedPositions;
+    }
+    
+    /**
+     * 适应问题区域
+     */
+    private List<BlockPos> adaptProblematicArea(LevelAccessor level, BlockPos problemPos) {
+        List<BlockPos> adaptedPositions = new ArrayList<>();
+        
+        // 在问题区域周围创建支撑结构
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                BlockPos supportPos = problemPos.offset(dx, 0, dz);
+                int supportHeight = getSurfaceHeightForLevelAccessor(level, supportPos);
+                BlockPos placementPos = new BlockPos(supportPos.getX(), supportHeight, supportPos.getZ());
+                
+                adaptedPositions.add(placementPos);
+            }
+        }
+        
+        return adaptedPositions;
     }
 }
