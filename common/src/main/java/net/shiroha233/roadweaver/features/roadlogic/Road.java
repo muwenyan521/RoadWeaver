@@ -2,6 +2,8 @@ package net.shiroha233.roadweaver.features.roadlogic;
 
 import net.shiroha233.roadweaver.config.ConfigProvider;
 import net.shiroha233.roadweaver.config.IModConfig;
+import net.shiroha233.roadweaver.features.chunk.ChunkStateManager;
+import net.shiroha233.roadweaver.features.chunk.ConflictResolutionStrategy;
 import net.shiroha233.roadweaver.features.config.RoadFeatureConfig;
 import net.shiroha233.roadweaver.helpers.Records;
 import net.shiroha233.roadweaver.persistence.WorldDataProvider;
@@ -60,11 +62,23 @@ public class Road {
             return;
         }
 
+        // 使用区块状态管理器验证和准备区块
+        ChunkStateManager chunkManager = ChunkStateManager.getInstance();
+        List<Records.RoadSegmentPlacement> safeSegments = chunkManager.prepareChunksForRoadPlacement(
+            serverWorld, roadSegmentPlacementList
+        );
+        
+        if (safeSegments.isEmpty()) {
+            LOGGER.warn("No safe segments available for road placement after chunk validation");
+            updateConnectionStatus(Records.ConnectionStatus.FAILED);
+            return;
+        }
+
         WorldDataProvider dataProvider = WorldDataProvider.getInstance();
         List<Records.RoadData> roadDataList = dataProvider.getRoadDataList(serverWorld);
         // 创建可变副本以避免 UnsupportedOperationException
         List<Records.RoadData> mutableList = new ArrayList<>(roadDataList != null ? roadDataList : new ArrayList<>());
-        mutableList.add(new Records.RoadData(width, type, material, roadSegmentPlacementList));
+        mutableList.add(new Records.RoadData(width, type, material, safeSegments));
         dataProvider.setRoadDataList(serverWorld, mutableList);
 
         // 完成

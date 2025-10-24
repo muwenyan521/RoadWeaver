@@ -3,6 +3,9 @@ package net.shiroha233.roadweaver.features;
 import com.mojang.serialization.Codec;
 import net.shiroha233.roadweaver.config.ConfigProvider;
 import net.shiroha233.roadweaver.config.IModConfig;
+import net.shiroha233.roadweaver.features.chunk.ChunkStateManager;
+import net.shiroha233.roadweaver.features.chunk.BlockConflictResolutionResult;
+import net.shiroha233.roadweaver.features.chunk.ConflictResolutionStrategy;
 import net.shiroha233.roadweaver.features.config.RoadFeatureConfig;
 import net.shiroha233.roadweaver.features.decoration.*;
 import net.shiroha233.roadweaver.features.roadlogic.RoadPathCalculator;
@@ -285,6 +288,16 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
             return;
         }
 
+        // 使用区块状态管理器验证区块状态
+        ChunkStateManager chunkManager = ChunkStateManager.getInstance();
+        ServerLevel serverLevel = (ServerLevel) level.getLevel();
+        
+        // 验证区块状态
+        if (!chunkManager.isChunkSafeForPlacement(serverLevel, surfacePos)) {
+            LOGGER.debug("Chunk at {} is not safe for road placement, skipping", surfacePos);
+            return;
+        }
+
         // 放置道路
         if (natural == 0 || random.nextDouble() < naturalBlockChance) {
             placeRoadBlock(level, blockStateAtPos, surfacePos, material, random);
@@ -297,23 +310,43 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                 && !level.getBlockState(surfacePos.below(2)).canOcclude()) {
             return;
         }
+        
+        // 使用区块状态管理器进行智能冲突解决
+        ChunkStateManager chunkManager = ChunkStateManager.getInstance();
+        ServerLevel serverLevel = (ServerLevel) level.getLevel();
         BlockState material = materials.get(deterministicRandom.nextInt(materials.size()));
-        level.setBlock(surfacePos.below(), material, 3);
-
-        // 清理道路上方的方块
-        for (int i = 0; i < CLEAR_HEIGHT_ABOVE_ROAD; i++) {
-            BlockState blockStateUp = level.getBlockState(surfacePos.above(i));
-            if (!blockStateUp.getBlock().equals(Blocks.AIR) && !blockStateUp.is(BlockTags.LOGS) && !blockStateUp.is(BlockTags.FENCES)) {
-                level.setBlock(surfacePos.above(i), Blocks.AIR.defaultBlockState(), 3);
-            } else {
-                break;
+        
+        // 解决方块冲突
+        BlockConflictResolutionResult resolutionResult = chunkManager.resolveBlockConflict(
+            serverLevel, surfacePos.below(), material, ConflictResolutionStrategy.PRESERVE_IMPORTANT
+        );
+        
+        // 根据冲突解决结果决定是否放置道路
+        if (resolutionResult.shouldPlace()) {
+            level.setBlock(surfacePos.below(), resolutionResult.getFinalBlockState(), 3);
+            
+            // 清理道路上方的方块
+            for (int i = 0; i < CLEAR_HEIGHT_ABOVE_ROAD; i++) {
+                BlockState blockStateUp = level.getBlockState(surfacePos.above(i));
+                if (!blockStateUp.getBlock().equals(Blocks.AIR) && !blockStateUp.is(BlockTags.LOGS) && !blockStateUp.is(BlockTags.FENCES)) {
+                    level.setBlock(surfacePos.above(i), Blocks.AIR.defaultBlockState(), 3);
+                } else {
+                    break;
+                }
             }
-        }
 
-        BlockPos belowPos1 = surfacePos.below(2);
-        BlockState belowState1 = level.getBlockState(belowPos1);
-        if (belowState1.getBlock().equals(Blocks.GRASS_BLOCK)) {
-            level.setBlock(belowPos1, Blocks.DIRT.defaultBlockState(), 3);
+            BlockPos belowPos1 = surfacePos.below(2);
+            BlockState belowState1 = level.getBlockState(belowPos1);
+            if (belowState1.getBlock().equals(Blocks.GRASS_BLOCK)) {
+                level.setBlock(belowPos1, Blocks.DIRT.defaultBlockState(), 3);
+            }
+            
+            // 记录冲突解决信息
+            if (resolutionResult.hasConflict()) {
+                LOGGER.debug("Block conflict resolved at {}: {}", surfacePos, resolutionResult.getResolutionMessage());
+            }
+        } else {
+            LOGGER.debug("Road placement skipped at {} due to conflict resolution: {}", surfacePos, resolutionResult.getResolutionMessage());
         }
     }
 
