@@ -374,8 +374,76 @@ public class EnhancedRoadPathCalculator {
         Set<BlockPos> segmentWidthPositions = new HashSet<>();
         int centerX = center.getX();
         int centerZ = center.getZ();
-        int y = 0;
+        int y = center.getY();
 
         if (direction == RoadDirection.X_AXIS) {
             for (int dz = -radius; dz <= radius; dz++) {
-                BlockPos pos = new BlockPos(centerX,
+                BlockPos pos = new BlockPos(centerX, y, centerZ + dz);
+                if (!widthPositionsCache.contains(pos)) {
+                    segmentWidthPositions.add(pos);
+                    widthPositionsCache.add(pos);
+                }
+            }
+        } else if (direction == RoadDirection.Z_AXIS) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                BlockPos pos = new BlockPos(centerX + dx, y, centerZ);
+                if (!widthPositionsCache.contains(pos)) {
+                    segmentWidthPositions.add(pos);
+                    widthPositionsCache.add(pos);
+                }
+            }
+        } else if (direction == RoadDirection.DIAGONAL_1) {
+            for (int offset = -radius; offset <= radius; offset++) {
+                BlockPos pos = new BlockPos(centerX + offset, y, centerZ + offset);
+                if (!widthPositionsCache.contains(pos)) {
+                    segmentWidthPositions.add(pos);
+                    widthPositionsCache.add(pos);
+                }
+            }
+        } else if (direction == RoadDirection.DIAGONAL_2) {
+            for (int offset = -radius; offset <= radius; offset++) {
+                BlockPos pos = new BlockPos(centerX + offset, y, centerZ - offset);
+                if (!widthPositionsCache.contains(pos)) {
+                    segmentWidthPositions.add(pos);
+                    widthPositionsCache.add(pos);
+                }
+            }
+        }
+
+        return segmentWidthPositions;
+    }
+
+    /**
+     * 道路方向枚举
+     */
+    public enum RoadDirection {
+        X_AXIS,
+        Z_AXIS,
+        DIAGONAL_1,
+        DIAGONAL_2
+    }
+
+    /**
+     * 向后兼容的A*道路路径计算（使用默认回调）
+     */
+    public static List<Records.RoadSegmentPlacement> calculateAStarRoadPath(
+            BlockPos start, BlockPos end, int width, ServerLevel serverWorld, int maxSteps,
+            int maxHeightDifference, int maxTerrainStability, boolean ignoreWater) {
+        
+        return calculateEnhancedAStarRoadPath(start, end, width, serverWorld, maxSteps,
+                maxHeightDifference, maxTerrainStability, ignoreWater, 
+                StructureDiscoveryCallback.defaultCallback());
+    }
+
+    /**
+     * 向后兼容的A*道路路径计算（简化版本）
+     */
+    public static List<Records.RoadSegmentPlacement> calculateAStarRoadPath(
+            BlockPos start, BlockPos end, int width, ServerLevel serverWorld, int maxSteps) {
+        
+        IModConfig cfg = ConfigProvider.get();
+        return calculateEnhancedAStarRoadPath(start, end, width, serverWorld, maxSteps,
+                cfg.maxHeightDifference(), cfg.maxTerrainStability(), false, 
+                StructureDiscoveryCallback.defaultCallback());
+    }
+}
