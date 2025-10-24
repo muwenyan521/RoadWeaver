@@ -29,11 +29,15 @@ jobs:
         run: chmod +x ./gradlew
       - name: build
         run: ./gradlew build
+
       - name: List generated JARs
-        run: find . -name "*.jar" | xargs ls -lh
+        run: find . -name "*.jar" -exec ls -lh {} \;
+
       - name: capture build artifacts
-        if: ${{ matrix.java == '21' }} # Only upload artifacts built from latest java
+        if: ${{ matrix.java == '21' }}
         uses: actions/upload-artifact@v4
         with:
           name: Artifacts
-          path: build/libs/
+          path: |
+            fabric/build/libs/roadweaver-fabric-*.jar
+            forge/build/libs/roadweaver-forge-*.jar
