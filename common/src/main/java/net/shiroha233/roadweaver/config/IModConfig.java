@@ -32,4 +32,17 @@ public interface IModConfig {
     default int heightCacheMaxSize() {
         return 100_000; // 默认10万个条目
     }
+
+    // 道路宽度配置
+    default boolean enableWidthConfiguration() {
+        return true;
+    }
+    
+    default int defaultRoadWidth() {
+        return 3;
+    }
+    
+    default boolean enableWidthBasedDecoration() {
+        return true;
+    }
 }

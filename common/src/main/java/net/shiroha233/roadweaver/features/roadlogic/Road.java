@@ -5,6 +5,7 @@ import net.shiroha233.roadweaver.config.IModConfig;
 import net.shiroha233.roadweaver.features.chunk.ChunkStateManager;
 import net.shiroha233.roadweaver.features.chunk.ConflictResolutionStrategy;
 import net.shiroha233.roadweaver.features.config.RoadFeatureConfig;
+import net.shiroha233.roadweaver.features.config.RoadWidthManager;
 import net.shiroha233.roadweaver.helpers.Records;
 import net.shiroha233.roadweaver.persistence.WorldDataProvider;
 import net.minecraft.core.BlockPos;
@@ -38,9 +39,22 @@ public class Road {
         updateConnectionStatus(Records.ConnectionStatus.GENERATING);
 
         RandomSource random = RandomSource.create();
-        int width = getRandomWidth(random, context.getWidths());
-
+        
+        // 使用新的宽度配置系统
         IModConfig cfg = ConfigProvider.get();
+        RoadWidthManager widthManager = RoadWidthManager.getInstance();
+        
+        int width;
+        if (cfg.enableWidthConfiguration()) {
+            // 根据结构连接确定道路等级
+            int roadGrade = widthManager.determineRoadGrade(structureConnection);
+            width = widthManager.getRandomWidthForGrade(roadGrade, random);
+            LOGGER.debug("Using width configuration: grade={}, width={}", roadGrade, width);
+        } else {
+            // 回退到旧的宽度选择逻辑
+            width = getRandomWidth(random, context.getWidths());
+        }
+
         int type = allowedRoadTypes(random, cfg);
         if (type == -1) {
             updateConnectionStatus(Records.ConnectionStatus.FAILED);

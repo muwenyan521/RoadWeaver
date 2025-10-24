@@ -7,6 +7,8 @@ import net.shiroha233.roadweaver.features.chunk.ChunkStateManager;
 import net.shiroha233.roadweaver.features.chunk.BlockConflictResolutionResult;
 import net.shiroha233.roadweaver.features.chunk.ConflictResolutionStrategy;
 import net.shiroha233.roadweaver.features.config.RoadFeatureConfig;
+import net.shiroha233.roadweaver.features.config.RoadWidthManager;
+import net.shiroha233.roadweaver.features.config.WidthLevelConfig;
 import net.shiroha233.roadweaver.features.decoration.*;
 import net.shiroha233.roadweaver.features.roadlogic.RoadPathCalculator;
 import net.shiroha233.roadweaver.helpers.Records;
@@ -187,6 +189,13 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                                BlockPos placePos, int segmentIndex, BlockPos nextPos, BlockPos prevPos, List<BlockPos> middleBlockPositions, int roadType, RandomSource random, IModConfig config) {
         BlockPos surfacePos = placePos.atY(level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, placePos.getX(), placePos.getZ()));
         BlockState blockStateAtPos = level.getBlockState(surfacePos.below());
+        
+        // 获取道路宽度配置
+        RoadWidthManager widthManager = RoadWidthManager.getInstance();
+        ServerLevel serverLevel = (ServerLevel) level.getLevel();
+        int roadWidth = widthManager.getRoadWidthForLevel(serverLevel, roadType);
+        WidthLevelConfig widthConfig = widthManager.getWidthLevelConfig(roadWidth);
+        
         // 水面在 placeOnSurface 中处理
         if (config.placeWaypoints()) {
             if (segmentIndex % WAYPOINT_SPACING == 0) {
@@ -194,6 +203,7 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
             }
             return;
         }
+        
         int dx = nextPos.getX() - prevPos.getX();
         int dz = nextPos.getZ() - prevPos.getZ();
         double length = Math.sqrt(dx * dx + dz * dz);
@@ -204,11 +214,17 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         Vec3i orthogonalVector = new Vec3i(-directionVector.getZ(), 0, directionVector.getX());
         boolean isEnd = segmentIndex != middleBlockPositions.size() - SIGN_PLACEMENT_OFFSET;
         BlockPos shiftedPos;
+        
+        // 基于宽度配置计算装饰间距
+        int lampPostSpacing = widthConfig.calculateDecorationSpacing(LAMPPOST_DECORATION_SPACING, roadWidth);
+        int fenceSpacing = widthConfig.calculateDecorationSpacing(FENCE_DECORATION_SPACING, roadWidth);
+        int largeDecorationSpacing = widthConfig.calculateDecorationSpacing(LARGE_DECORATION_SPACING, roadWidth);
+        
         if (segmentIndex == SIGN_PLACEMENT_OFFSET || segmentIndex == middleBlockPositions.size() - SIGN_PLACEMENT_OFFSET) {
             shiftedPos = isEnd ? placePos.offset(orthogonalVector.multiply(2)) : placePos.offset(orthogonalVector.multiply(-2));
             roadDecorationPlacementPositions.add(new DistanceSignDecoration(shiftedPos, orthogonalVector, level, isEnd, String.valueOf(middleBlockPositions.size())));
         }
-        else if (segmentIndex % LAMPPOST_DECORATION_SPACING == 0) {
+        else if (segmentIndex % lampPostSpacing == 0) {
             boolean leftRoadSide = random.nextBoolean();
             shiftedPos = leftRoadSide ? placePos.offset(orthogonalVector.multiply(2)) : placePos.offset(orthogonalVector.multiply(-2));
             shiftedPos = shiftedPos.atY(level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, shiftedPos.getX(), shiftedPos.getZ()));
@@ -223,7 +239,7 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
             }
         }
         // 间断栏杆装饰
-        else if (config.placeRoadFences() && segmentIndex % FENCE_DECORATION_SPACING == 0) {
+        else if (config.placeRoadFences() && segmentIndex % fenceSpacing == 0) {
             boolean leftRoadSide = random.nextBoolean();
             shiftedPos = leftRoadSide ? placePos.offset(orthogonalVector.multiply(2)) : placePos.offset(orthogonalVector.multiply(-2));
             shiftedPos = shiftedPos.atY(level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, shiftedPos.getX(), shiftedPos.getZ()));
@@ -234,12 +250,17 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
             roadDecorationPlacementPositions.add(new RoadFenceDecoration(shiftedPos, orthogonalVector, level, leftRoadSide, fenceLength));
         }
         // 大型装饰（秋千、长椅、凉亭）
-        else if (segmentIndex % LARGE_DECORATION_SPACING == 0) {
+        else if (segmentIndex % largeDecorationSpacing == 0) {
             List<String> availableStructures = new ArrayList<>();
             if (config.placeSwings()) availableStructures.add("swing");
             if (config.placeBenches()) availableStructures.add("bench");
             if (config.placeGloriettes()) availableStructures.add("gloriette");
             if (availableStructures.isEmpty()) return;
+            
+            // 基于宽度配置控制大型装饰概率
+            if (random.nextDouble() > widthConfig.getLargeDecorationProbability()) {
+                return;
+            }
             
             // 随机选择一个装饰类型
             String chosenStructure = availableStructures.get(random.nextInt(availableStructures.size()));
