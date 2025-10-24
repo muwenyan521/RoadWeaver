@@ -51,8 +51,9 @@ public class Road {
         int maxStability = cfg.maxTerrainStability();
         boolean ignoreWater = false;
 
-        List<Records.RoadSegmentPlacement> roadSegmentPlacementList = RoadPathCalculator.calculateAStarRoadPath(
-                start, end, width, serverWorld, maxSteps, maxHeightDiff, maxStability, ignoreWater);
+        List<Records.RoadSegmentPlacement> roadSegmentPlacementList = EnhancedRoadPathCalculator.calculateEnhancedAStarRoadPath(
+                start, end, width, serverWorld, maxSteps, maxHeightDiff, maxStability, ignoreWater, 
+                StructureDiscoveryCallback.defaultCallback());
 
         if (roadSegmentPlacementList.isEmpty()) {
             updateConnectionStatus(Records.ConnectionStatus.FAILED);
