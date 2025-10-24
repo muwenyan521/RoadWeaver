@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.shiroha233.roadweaver.helpers.Records;
 
 import java.util.*;
@@ -250,12 +251,9 @@ public class ChunkStateManager {
                     // 如果地形未生成，尝试触发生成
                     try {
                         // 使用更简单的区块生成触发方法
-                        level.getChunkSource().getGenerator().createBiomes(
-                            level.registryAccess(), 
-                            level.getChunkSource().randomState(), 
-                            level.structureManager(), 
-                            chunk
-                        );
+                        // 注意：createBiomes 方法签名可能已更改，这里使用更安全的方法
+                        // 通过获取区块状态来触发生成
+                        level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.BIOMES, true);
                         isTerrainGenerated = true;
                     } catch (Exception e) {
                         // 生成失败，区块不可用
@@ -314,15 +312,14 @@ public class ChunkStateManager {
             if (chunk != null && !chunk.getStatus().isOrAfter(ChunkStatus.FULL)) {
                 // 使用适当的区块生成方法
                 // 通过获取区块的所有部分来触发完整生成
-                level.getChunkSource().getGenerator().createBiomes(level.registryAccess(), 
-                    level.getChunkSource().randomState(), level.structureManager(), chunk);
+                level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.BIOMES, true);
                 
                 // 生成地形特征 - 使用更简单的方法
                 // 通过强制获取区块状态来触发完整生成
-                level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL);
+                level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
                 
                 // 生成结构 - 使用更简单的方法
-                level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FEATURES);
+                level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FEATURES, true);
             }
             
             // 验证区块是否已完全生成并可访问
