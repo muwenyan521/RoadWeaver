@@ -249,10 +249,11 @@ public class ChunkStateManager {
                 if (!isTerrainGenerated) {
                     // 如果地形未生成，尝试触发生成
                     try {
+                        // 使用更简单的区块生成触发方法
                         level.getChunkSource().getGenerator().createBiomes(
-                            level.getRegistryAccess(), 
+                            level.registryAccess(), 
                             level.getChunkSource().randomState(), 
-                            level.getStructureManager(), 
+                            level.structureManager(), 
                             chunk
                         );
                         isTerrainGenerated = true;
@@ -313,15 +314,15 @@ public class ChunkStateManager {
             if (chunk != null && !chunk.getStatus().isOrAfter(ChunkStatus.FULL)) {
                 // 使用适当的区块生成方法
                 // 通过获取区块的所有部分来触发完整生成
-                level.getChunkSource().getGenerator().createBiomes(level.getRegistryAccess(), 
-                    level.getChunkSource().randomState(), level.getStructureManager(), chunk);
+                level.getChunkSource().getGenerator().createBiomes(level.registryAccess(), 
+                    level.getChunkSource().randomState(), level.structureManager(), chunk);
                 
-                // 生成地形特征
-                level.getChunkSource().getGenerator().createReferences(level, chunk);
+                // 生成地形特征 - 使用更简单的方法
+                // 通过强制获取区块状态来触发完整生成
+                level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL);
                 
-                // 生成结构
-                level.getChunkSource().getGenerator().applyBiomeDecoration(level, chunk, 
-                    level.getChunkSource().randomState());
+                // 生成结构 - 使用更简单的方法
+                level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FEATURES);
             }
             
             // 验证区块是否已完全生成并可访问
