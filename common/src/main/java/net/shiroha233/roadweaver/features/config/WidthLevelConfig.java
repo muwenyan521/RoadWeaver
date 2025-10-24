@@ -115,4 +115,13 @@ public class WidthLevelConfig {
     public boolean shouldPlaceLargeDecoration(int segmentIndex, int width) {
         return segmentIndex % getLargeDecorationSpacing(width) == 0;
     }
+    
+    /**
+     * 计算装饰间距（基于基础间距和道路宽度）
+     */
+    public int calculateDecorationSpacing(int baseSpacing, int width) {
+        // 根据道路宽度调整间距：较宽的道路需要更大的间距
+        double widthFactor = Math.max(1.0, width / 3.0);
+        return (int) Math.max(minDecorationSpacing, baseSpacing * widthFactor);
+    }
 }
