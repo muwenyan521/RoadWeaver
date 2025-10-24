@@ -409,7 +409,7 @@ public class EnhancedStructureDetector {
         // 获取所有结构
         Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         
-        for (Holder<Structure> structure : registry.stream().toList()) {
+        for (Holder<Structure> structure : registry.holders().toList()) {
             StructureDetectionConfig.StructureType type = getStructureType(level, structure);
             stats.put(type, stats.getOrDefault(type, 0) + 1);
         }

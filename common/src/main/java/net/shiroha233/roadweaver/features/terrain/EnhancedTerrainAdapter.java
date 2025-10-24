@@ -748,6 +748,38 @@ public class EnhancedTerrainAdapter {
         return center.getY();
     }
     
+    // ========== WorldGenLevel兼容方法 ==========
+    
+    /**
+     * 为WorldGenLevel计算坡度梯度
+     * 
+     * @param level 世界生成级别
+     * @param center 中心位置
+     * @return 坡度梯度值
+     */
+    private static double calculateSlopeGradientForWorldGenLevel(net.minecraft.world.level.WorldGenLevel level, BlockPos center) {
+        double totalSlope = 0;
+        int sampleCount = 0;
+        
+        for (int dx = -SLOPE_ANALYSIS_RADIUS; dx <= SLOPE_ANALYSIS_RADIUS; dx++) {
+            for (int dz = -SLOPE_ANALYSIS_RADIUS; dz <= SLOPE_ANALYSIS_RADIUS; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                
+                BlockPos samplePos = center.offset(dx, 0, dz);
+                int centerHeight = level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, center.getX(), center.getZ());
+                int sampleHeight = level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, samplePos.getX(), samplePos.getZ());
+                
+                double distance = Math.sqrt(dx * dx + dz * dz);
+                double slope = Math.abs(sampleHeight - centerHeight) / distance;
+                
+                totalSlope += slope;
+                sampleCount++;
+            }
+        }
+        
+        return sampleCount > 0 ? totalSlope / sampleCount : 0;
+    }
+    
     // ========== BiomeConnectionStrategy集成方法 ==========
     
     /**
