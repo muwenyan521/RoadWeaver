@@ -113,13 +113,11 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         // 使用增强型结构检测器（如果启用）
         if (config.enableEnhancedStructureDetection()) {
             EnhancedStructureDetector enhancedDetector = new EnhancedStructureDetector();
-            List<BlockPos> enhancedStructures = enhancedDetector.detectStructures(serverLevel, villageLocations);
+            // 增强检测器目前主要用于定位新结构，不直接返回结构列表
+            enhancedDetector.locateEnhancedStructures(serverLevel, 1, false);
             
-            // 记录增强检测结果
-            if (enhancedStructures.size() > villageLocations.size()) {
-                LOGGER.info("🔍 Enhanced structure detection found {} structures (original: {})", 
-                    enhancedStructures.size(), villageLocations.size());
-            }
+            // 记录增强检测器已启用
+            LOGGER.info("🔍 Enhanced structure detection enabled");
         }
         
         tryFindNewStructureConnection(villageLocations, serverLevel);

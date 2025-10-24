@@ -168,17 +168,110 @@ public class EnhancedStructureDetector {
     /**
      * 解析增强的结构目标
      */
-    private Optional<HolderSet<Structure>> resolveEnhancedStructureTargets(ServerLevel level, String identifiers) {
+    private Optional<HolderSet<Structure>> resolveEnhancedStructureTargets(ServerLevel level, List<String> identifiers) {
         Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         List<Holder<Structure>> holders = new ArrayList<>();
         
-        if (identifiers == null || identifiers.isBlank()) {
+        if (identifiers == null || identifiers.isEmpty()) {
             // 如果未指定结构，使用默认结构集
             return getDefaultStructureSet(level);
         }
         
-        // 重用现有的解析逻辑
-        return StructureLocatorImpl.resolveStructureTargets(level, identifiers);
+        // 重用现有的解析逻辑 - 由于StructureLocatorImpl的方法是私有的，我们需要自己实现
+        return resolveStructureTargets(level, identifiers);
+    }
+    
+    /**
+     * 解析结构目标（复制自StructureLocatorImpl的实现）
+     */
+    private Optional<HolderSet<Structure>> resolveStructureTargets(ServerLevel level, List<String> identifiersList) {
+        Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
+        List<Holder<Structure>> holders = new ArrayList<>();
+
+        if (identifiersList == null || identifiersList.isEmpty()) {
+            return Optional.empty();
+        }
+
+        for (String line : identifiersList) {
+            if (line == null) continue;
+            String norm = line.replace('\r', ' ').replace('\n', ' ').trim();
+            if (norm.isEmpty()) continue;
+            // 允许行内继续使用逗号/分号/空白再分割
+            String[] tokens = norm.split("[;,\\s]+");
+            for (String raw : tokens) {
+                if (raw == null) continue;
+                String token = raw.trim();
+                if (token.isEmpty()) continue;
+                // 重用单字符串解析的清洗逻辑
+                token = token
+                        .replace("\r", "")
+                        .replace("\n", "");
+                token = token.replaceAll("^[\\\"'`]+|[\\\"'`]+$", "");
+                token = token.replaceAll("[,;，；]+$", "");
+                if (!token.isEmpty() && token.charAt(0) == '\uFEFF') token = token.substring(1);
+                token = token
+                        .replace('＃', '#')
+                        .replace('"', ' ')
+                        .replace('"', ' ')
+                        .replace('「', ' ')
+                        .replace('」', ' ')
+                        .replace('『', ' ')
+                        .replace('』', ' ')
+                        .replace('《', ' ')
+                        .replace('》', ' ')
+                        .trim();
+                if (token.isEmpty()) continue;
+
+                int hashIdx = token.indexOf('#');
+                if (hashIdx >= 0) {
+                    String tagToken = token.substring(hashIdx + 1).trim();
+                    try {
+                        ResourceLocation tagId = new ResourceLocation(tagToken);
+                        TagKey<Structure> tag = TagKey.create(Registries.STRUCTURE, tagId);
+                        registry.getTag(tag).ifPresentOrElse(named -> {
+                            for (Holder<Structure> h : named) holders.add(h);
+                        }, () -> LOGGER.warn("RoadWeaver: structure tag not found: #{}", tagToken));
+                    } catch (Exception ex) {
+                        LOGGER.warn("RoadWeaver: invalid structure tag token skipped: #{} (line='{}')", tagToken, line);
+                    }
+                } else {
+                    try {
+                        String cleaned = token.replaceAll("^[^a-z0-9_.:/\\-]+", "");
+                        
+                        // 支持通配符匹配（例如：modid:structure_*）
+                        if (cleaned.contains("*")) {
+                            String pattern = cleaned.replace("*", "");
+                            int matchCount = 0;
+                            for (var entry : registry.entrySet()) {
+                                String structureId = entry.getKey().location().toString();
+                                if (structureId.startsWith(pattern)) {
+                                    registry.getHolder(entry.getKey()).ifPresent(holders::add);
+                                    matchCount++;
+                                }
+                            }
+                            if (matchCount > 0) {
+                                LOGGER.info("RoadWeaver: 通配符 '{}' 匹配到 {} 个结构", cleaned, matchCount);
+                            } else {
+                                LOGGER.warn("RoadWeaver: 通配符 '{}' 未匹配到任何结构", cleaned);
+                            }
+                        } else {
+                            // 精确匹配
+                            ResourceLocation id = new ResourceLocation(cleaned);
+                            ResourceKey<Structure> key = ResourceKey.create(Registries.STRUCTURE, id);
+                            registry.getHolder(key).ifPresentOrElse(holders::add,
+                                    () -> LOGGER.warn("RoadWeaver: structure id not found: {}", cleaned));
+                        }
+                    } catch (Exception ex) {
+                        LOGGER.warn("RoadWeaver: invalid structure id token skipped: {} (line='{}')", token, line);
+                    }
+                }
+            }
+        }
+
+        if (holders.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(HolderSet.direct(holders));
     }
     
     /**
@@ -315,7 +408,7 @@ public class EnhancedStructureDetector {
         // 获取所有结构
         Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         
-        for (Holder<Structure> structure : registry.stream().toList()) {
+        for (Holder<Structure> structure : registry.stream().map(entry -> entry).toList()) {
             StructureDetectionConfig.StructureType type = getStructureType(level, structure);
             stats.put(type, stats.getOrDefault(type, 0) + 1);
         }

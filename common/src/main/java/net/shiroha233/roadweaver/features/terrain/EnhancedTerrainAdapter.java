@@ -8,6 +8,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -488,5 +489,127 @@ public class EnhancedTerrainAdapter {
             BlockState material = materials.get(random.nextInt(materials.size()));
             level.setBlock(position.below(), material, 3);
         }
+    }
+    
+    // ========== 缺失的类和方法 ==========
+    
+    /**
+     * 地形分析结果类
+     */
+    public static class TerrainAnalysis {
+        private final BlockPos position;
+        private final double slopeGradient;
+        private final double elevation;
+        private final double roughness;
+        private final boolean isSteep;
+        private final boolean isFlat;
+        private final List<BlockPos> problematicAreas;
+        
+        public TerrainAnalysis(BlockPos position, double slopeGradient, double elevation, 
+                              double roughness, boolean isSteep, boolean isFlat, 
+                              List<BlockPos> problematicAreas) {
+            this.position = position;
+            this.slopeGradient = slopeGradient;
+            this.elevation = elevation;
+            this.roughness = roughness;
+            this.isSteep = isSteep;
+            this.isFlat = isFlat;
+            this.problematicAreas = problematicAreas;
+        }
+        
+        public BlockPos getPosition() { return position; }
+        public double getSlopeGradient() { return slopeGradient; }
+        public double getElevation() { return elevation; }
+        public double getRoughness() { return roughness; }
+        public boolean isSteep() { return isSteep; }
+        public boolean isFlat() { return isFlat; }
+        public List<BlockPos> getProblematicAreas() { return problematicAreas; }
+    }
+    
+    /**
+     * 分析地形 - 用于BiomeConnectionStrategy集成
+     * 
+     * @param level 世界
+     * @param position 分析位置
+     * @param radius 分析半径
+     * @return 地形分析结果
+     */
+    public TerrainAnalysis analyzeTerrain(LevelAccessor level, BlockPos position, int radius) {
+        ServerLevel serverLevel = (ServerLevel) level.getLevel();
+        
+        // 计算坡度梯度
+        double slopeGradient = calculateSlopeGradient(serverLevel, position);
+        
+        // 计算平均海拔
+        double elevation = getSurfaceHeight(serverLevel, position);
+        
+        // 计算地形粗糙度
+        double roughness = calculateTerrainRoughness(serverLevel, position, radius);
+        
+        // 判断地形类型
+        boolean isSteep = slopeGradient > MAX_SLOPE_GRADIENT;
+        boolean isFlat = slopeGradient < 0.1;
+        
+        // 检测问题区域
+        List<BlockPos> problematicAreas = detectProblematicAreas(serverLevel, position, radius);
+        
+        return new TerrainAnalysis(
+            position, slopeGradient, elevation, roughness, isSteep, isFlat, problematicAreas
+        );
+    }
+    
+    /**
+     * 计算地形粗糙度
+     * 
+     * @param level 世界
+     * @param center 中心位置
+     * @param radius 半径
+     * @return 地形粗糙度值
+     */
+    private static double calculateTerrainRoughness(ServerLevel level, BlockPos center, int radius) {
+        double totalVariation = 0;
+        int sampleCount = 0;
+        
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                
+                BlockPos samplePos = center.offset(dx, 0, dz);
+                int centerHeight = getSurfaceHeight(level, center);
+                int sampleHeight = getSurfaceHeight(level, samplePos);
+                
+                double heightDiff = Math.abs(sampleHeight - centerHeight);
+                totalVariation += heightDiff;
+                sampleCount++;
+            }
+        }
+        
+        return sampleCount > 0 ? totalVariation / sampleCount : 0;
+    }
+    
+    /**
+     * 检测问题区域
+     * 
+     * @param level 世界
+     * @param center 中心位置
+     * @param radius 半径
+     * @return 问题区域列表
+     */
+    private static List<BlockPos> detectProblematicAreas(ServerLevel level, BlockPos center, int radius) {
+        List<BlockPos> problematicAreas = new ArrayList<>();
+        
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                BlockPos samplePos = center.offset(dx, 0, dz);
+                double slopeGradient = calculateSlopeGradient(level, samplePos);
+                
+                // 如果坡度过大或地形过于崎岖，标记为问题区域
+                if (slopeGradient > MAX_SLOPE_GRADIENT * 1.5) {
+                    problematicAreas.add(samplePos);
+                }
+            }
+        }
+        
+        return problematicAreas;
     }
 }

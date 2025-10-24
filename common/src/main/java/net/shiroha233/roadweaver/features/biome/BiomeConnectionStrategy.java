@@ -263,20 +263,19 @@ public class BiomeConnectionStrategy {
      */
     private static int calculateTransitionWidth(BiomeCategory from, BiomeCategory to) {
         // 基于生物群系差异程度计算过渡宽度
-        Map<BiomeCategory, Integer> complexityScores = Map.of(
-            BiomeCategory.PLAINS, 1,
-            BiomeCategory.FOREST, 2,
-            BiomeCategory.DESERT, 2,
-            BiomeCategory.MOUNTAIN, 3,
-            BiomeCategory.OCEAN, 3,
-            BiomeCategory.SWAMP, 3,
-            BiomeCategory.TAIGA, 2,
-            BiomeCategory.JUNGLE, 3,
-            BiomeCategory.MESA, 2,
-            BiomeCategory.SNOW, 2,
-            BiomeCategory.NETHER, 4,
-            BiomeCategory.END, 4
-        );
+        Map<BiomeCategory, Integer> complexityScores = new HashMap<>();
+        complexityScores.put(BiomeCategory.PLAINS, 1);
+        complexityScores.put(BiomeCategory.FOREST, 2);
+        complexityScores.put(BiomeCategory.DESERT, 2);
+        complexityScores.put(BiomeCategory.MOUNTAIN, 3);
+        complexityScores.put(BiomeCategory.OCEAN, 3);
+        complexityScores.put(BiomeCategory.SWAMP, 3);
+        complexityScores.put(BiomeCategory.TAIGA, 2);
+        complexityScores.put(BiomeCategory.JUNGLE, 3);
+        complexityScores.put(BiomeCategory.MESA, 2);
+        complexityScores.put(BiomeCategory.SNOW, 2);
+        complexityScores.put(BiomeCategory.NETHER, 4);
+        complexityScores.put(BiomeCategory.END, 4);
         
         int fromScore = complexityScores.getOrDefault(from, 1);
         int toScore = complexityScores.getOrDefault(to, 1);
@@ -369,8 +368,12 @@ public class BiomeConnectionStrategy {
             road.add(boundaryPos);
             
             // 在边界两侧分别使用各自的材料
-            BlockPos fromSide = boundaryPos.offset(fromPos.subtract(boundaryPos).normalize());
-            BlockPos toSide = boundaryPos.offset(toPos.subtract(boundaryPos).normalize());
+            // 计算方向向量（简化实现，使用相邻位置）
+            BlockPos fromDirection = calculateDirection(fromPos, boundaryPos);
+            BlockPos toDirection = calculateDirection(toPos, boundaryPos);
+            
+            BlockPos fromSide = boundaryPos.offset(fromDirection);
+            BlockPos toSide = boundaryPos.offset(toDirection);
             
             level.setBlock(fromSide, fromMaterials.getMainBlock(), 3);
             level.setBlock(toSide, toMaterials.getMainBlock(), 3);
@@ -450,6 +453,21 @@ public class BiomeConnectionStrategy {
         // 简化实现：根据比例选择其中一种方块
         // 在实际实现中，可能需要更复杂的混合逻辑
         return ratio < 0.5 ? state1 : state2;
+    }
+    
+    /**
+     * 计算从fromPos到toPos的方向向量（简化实现）
+     */
+    private static BlockPos calculateDirection(BlockPos fromPos, BlockPos toPos) {
+        int dx = Integer.compare(toPos.getX() - fromPos.getX(), 0);
+        int dz = Integer.compare(toPos.getZ() - fromPos.getZ(), 0);
+        
+        // 确保至少有一个方向分量不为零
+        if (dx == 0 && dz == 0) {
+            return new BlockPos(1, 0, 0); // 默认向东
+        }
+        
+        return new BlockPos(dx, 0, dz);
     }
     
     /**
