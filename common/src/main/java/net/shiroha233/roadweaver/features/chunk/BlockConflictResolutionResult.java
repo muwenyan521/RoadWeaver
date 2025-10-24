@@ -1,6 +1,6 @@
 package net.shiroha233.roadweaver.features.chunk;
 
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 
 /**
  * 方块冲突解决结果，记录冲突解决的状态和详细信息

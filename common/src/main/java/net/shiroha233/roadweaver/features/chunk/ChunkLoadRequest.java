@@ -1,6 +1,6 @@
 package net.shiroha233.roadweaver.features.chunk;
 
-import net.minecraft.util.math.ChunkPos;
+import net.minecraft.world.level.ChunkPos;
 
 /**
  * 区块加载请求，用于管理强制区块加载操作
