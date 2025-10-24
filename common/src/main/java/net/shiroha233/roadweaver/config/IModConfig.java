@@ -45,4 +45,75 @@ public interface IModConfig {
     default boolean enableWidthBasedDecoration() {
         return true;
     }
+
+    // 增强型结构检测配置
+    default boolean enableEnhancedStructureDetection() {
+        return true;
+    }
+    
+    default String structureDetectionMode() {
+        return "ALL"; // ALL, SURFACE_ONLY, UNDERGROUND_ONLY, UNDERWATER_ONLY, CUSTOM
+    }
+    
+    default boolean detectSurfaceStructures() {
+        return true;
+    }
+    
+    default boolean detectUndergroundStructures() {
+        return false;
+    }
+    
+    default boolean detectUnderwaterStructures() {
+        return false;
+    }
+    
+    default boolean detectAerialStructures() {
+        return false;
+    }
+    
+    default boolean detectCoastalStructures() {
+        return true;
+    }
+    
+    default boolean detectMountainStructures() {
+        return true;
+    }
+
+    // 地形适配配置
+    default boolean enableTerrainAdaptation() {
+        return true;
+    }
+    
+    default boolean enableStepReplacement() {
+        return true;
+    }
+    
+    default boolean enableSlopeAdaptation() {
+        return true;
+    }
+    
+    default int maxStepHeight() {
+        return 3;
+    }
+    
+    default int maxSlopeAngle() {
+        return 45;
+    }
+
+    // 生物群系连接策略配置
+    default boolean enableBiomeConnectionStrategy() {
+        return true;
+    }
+    
+    default String biomeTransitionStrategy() {
+        return "GRADUAL"; // GRADUAL, CLEAR_BOUNDARY, MIXED_STYLE, NATURAL_FUSION
+    }
+    
+    default boolean enableBiomeBoundaryDetection() {
+        return true;
+    }
+    
+    default int biomeTransitionWidth() {
+        return 8;
+    }
 }

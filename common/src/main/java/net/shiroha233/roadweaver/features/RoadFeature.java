@@ -11,6 +11,9 @@ import net.shiroha233.roadweaver.features.config.RoadWidthManager;
 import net.shiroha233.roadweaver.features.config.WidthLevelConfig;
 import net.shiroha233.roadweaver.features.decoration.*;
 import net.shiroha233.roadweaver.features.roadlogic.RoadPathCalculator;
+import net.shiroha233.roadweaver.features.terrain.EnhancedTerrainAdapter;
+import net.shiroha233.roadweaver.features.biome.BiomeConnectionStrategy;
+import net.shiroha233.roadweaver.features.EnhancedStructureDetector;
 import net.shiroha233.roadweaver.helpers.Records;
 import net.shiroha233.roadweaver.helpers.StructureConnector;
 import net.shiroha233.roadweaver.persistence.WorldDataProvider;
@@ -107,9 +110,21 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                 chunksForLocatingCounter, villageLocations.size());
         }
         
+        // 使用增强型结构检测器（如果启用）
+        if (config.enableEnhancedStructureDetection()) {
+            EnhancedStructureDetector enhancedDetector = new EnhancedStructureDetector();
+            List<BlockPos> enhancedStructures = enhancedDetector.detectStructures(serverLevel, villageLocations);
+            
+            // 记录增强检测结果
+            if (enhancedStructures.size() > villageLocations.size()) {
+                LOGGER.info("🔍 Enhanced structure detection found {} structures (original: {})", 
+                    enhancedStructures.size(), villageLocations.size());
+            }
+        }
+        
         tryFindNewStructureConnection(villageLocations, serverLevel);
         Set<Decoration> roadDecorationCache = new HashSet<>();
-        runRoadLogic(level, context, roadDecorationCache);
+        runEnhancedRoadLogic(level, context, roadDecorationCache);
         RoadStructures.tryPlaceDecorations(roadDecorationCache);
         return true;
     }
@@ -123,6 +138,84 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                 triggerDistance, villageLocations.size());
             serverLevel.getServer().execute(() -> StructureConnector.cacheNewConnection(serverLevel, true));
             chunksForLocatingCounter = 1;
+        }
+    }
+
+    private void runEnhancedRoadLogic(WorldGenLevel level, FeaturePlaceContext<RoadFeatureConfig> context, Set<Decoration> roadDecorationPlacementPositions) {
+        IModConfig config = ConfigProvider.get();
+        WorldDataProvider dataProvider = WorldDataProvider.getInstance();
+        ServerLevel serverLevel = (ServerLevel) level.getLevel();
+
+        int averagingRadius = config.averagingRadius();
+        List<Records.RoadData> roadDataList = dataProvider.getRoadDataList(serverLevel);
+        if (roadDataList == null) return;
+        ChunkPos currentChunkPos = new ChunkPos(context.origin());
+
+        // 初始化增强系统
+        EnhancedTerrainAdapter terrainAdapter = null;
+        BiomeConnectionStrategy biomeStrategy = null;
+        
+        if (config.enableTerrainAdaptation()) {
+            terrainAdapter = new EnhancedTerrainAdapter();
+        }
+        
+        if (config.enableBiomeConnectionStrategy()) {
+            biomeStrategy = new BiomeConnectionStrategy();
+        }
+
+        Set<BlockPos> posAlreadyContainsSegment = new HashSet<>();
+        for (Records.RoadData data : roadDataList) {
+            int roadType = data.roadType();
+            List<BlockState> materials = data.materials();
+            List<Records.RoadSegmentPlacement> segmentList = data.roadSegmentList();
+
+            List<BlockPos> middlePositions = segmentList.stream().map(Records.RoadSegmentPlacement::middlePos).toList();
+            int segmentIndex = 0;
+            for (int i = 2; i < segmentList.size() - 2; i++) {
+                if (posAlreadyContainsSegment.contains(middlePositions.get(i))) continue;
+                segmentIndex++;
+                Records.RoadSegmentPlacement segment = segmentList.get(i);
+                BlockPos segmentMiddlePos = segment.middlePos();
+                // 靠近结构处不铺路
+                if (segmentIndex < STRUCTURE_EDGE_OFFSET || segmentIndex > segmentList.size() - STRUCTURE_EDGE_OFFSET) continue;
+                ChunkPos middleChunkPos = new ChunkPos(segmentMiddlePos);
+                if (!middleChunkPos.equals(currentChunkPos)) continue;
+
+                BlockPos prevPos = middlePositions.get(i - 2);
+                BlockPos nextPos = middlePositions.get(i + 2);
+                List<Double> heights = new ArrayList<>();
+                for (int j = i - averagingRadius; j <= i + averagingRadius; j++) {
+                    if (j >= 0 && j < middlePositions.size()) {
+                        BlockPos samplePos = middlePositions.get(j);
+                        double y = level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, samplePos.getX(), samplePos.getZ());
+                        heights.add(y);
+                    }
+                }
+
+                int averageY = (int) Math.round(heights.stream().mapToDouble(Double::doubleValue).average().orElse(segmentMiddlePos.getY()));
+                BlockPos averagedPos = new BlockPos(segmentMiddlePos.getX(), averageY, segmentMiddlePos.getZ());
+
+                // 应用地形适配（如果启用）
+                if (terrainAdapter != null) {
+                    averagedPos = terrainAdapter.adaptToTerrain(level, averagedPos, prevPos, nextPos);
+                }
+
+                // 应用生物群系连接策略（如果启用）
+                List<BlockState> adaptedMaterials = materials;
+                if (biomeStrategy != null) {
+                    adaptedMaterials = biomeStrategy.getAdaptedMaterials(level, averagedPos, materials, roadType);
+                }
+
+                RandomSource random = context.random();
+                if (!config.placeWaypoints()) {
+                    for (BlockPos widthBlock : segment.positions()) {
+                        BlockPos correctedYPos = new BlockPos(widthBlock.getX(), averagedPos.getY(), widthBlock.getZ());
+                        placeEnhancedOnSurface(level, correctedYPos, adaptedMaterials, roadType, random, terrainAdapter);
+                    }
+                }
+                addDecoration(level, roadDecorationPlacementPositions, averagedPos, segmentIndex, nextPos, prevPos, middlePositions, roadType, random, config);
+                posAlreadyContainsSegment.add(segmentMiddlePos);
+            }
         }
     }
 
@@ -290,6 +383,52 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                     roadDecorationPlacementPositions.add(new GlorietteDecoration(shiftedPos, orthogonalVector, level));
                     break;
             }
+        }
+    }
+
+    private void placeEnhancedOnSurface(WorldGenLevel level, BlockPos placePos, List<BlockState> material, int natural, RandomSource random, EnhancedTerrainAdapter terrainAdapter) {
+        IModConfig config = ConfigProvider.get();
+        double naturalBlockChance = 0.5;
+        BlockPos surfacePos = placePos;
+        if (natural == 1 || config.averagingRadius() == 0) {
+            surfacePos = new BlockPos(placePos.getX(), level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, placePos.getX(), placePos.getZ()), placePos.getZ());
+        }
+        BlockPos topPos = new BlockPos(surfacePos.getX(), level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, surfacePos.getX(), surfacePos.getZ()), surfacePos.getZ());
+        BlockState blockStateAtPos = level.getBlockState(topPos.below());
+
+        // 水面则放置未点燃营火
+        if (blockStateAtPos.equals(Blocks.WATER.defaultBlockState())) {
+            level.setBlock(topPos, Blocks.CAMPFIRE.defaultBlockState().setValue(BlockStateProperties.LIT, false), 3);
+            return;
+        }
+
+        // 使用区块状态管理器验证区块状态
+        ChunkStateManager chunkManager = ChunkStateManager.getInstance();
+        ServerLevel serverLevel = (ServerLevel) level.getLevel();
+        
+        // 验证区块状态
+        var chunkValidationResult = chunkManager.validateChunkState(serverLevel, surfacePos);
+        if (!chunkValidationResult.isSafe()) {
+            LOGGER.debug("Chunk at {} is not safe for road placement, skipping", surfacePos);
+            return;
+        }
+
+        // 应用地形适配（如果启用且适配器可用）
+        if (terrainAdapter != null && config.enableTerrainAdaptation()) {
+            // 获取周围地形信息用于坡度分析
+            BlockPos[] surroundingPositions = terrainAdapter.getSurroundingPositions(surfacePos, 2);
+            surfacePos = terrainAdapter.applySlopeAdaptation(level, surfacePos, surroundingPositions);
+            
+            // 应用台阶替换算法
+            if (config.enableStepReplacement()) {
+                terrainAdapter.applyStepReplacement(level, surfacePos, material, random);
+                return; // 台阶替换会处理完整的道路放置
+            }
+        }
+
+        // 放置道路
+        if (natural == 0 || random.nextDouble() < naturalBlockChance) {
+            placeRoadBlock(level, blockStateAtPos, surfacePos, material, random);
         }
     }
 
