@@ -1,3 +1,4 @@
+本人将不会对该项目做任何后续的维护 具体可查看[B站作者"冷喵越龙门"的视频](https://bilibili.com/video/BV1sBsFz9EDf)
 # 🛤️ RoadWeaver
 
 自动在结构之间编织道路的 Minecraft 模组  
