@@ -10,6 +10,9 @@ import net.shiroha233.roadweaver.features.config.RoadFeatureConfig;
 import net.shiroha233.roadweaver.features.config.RoadWidthManager;
 import net.shiroha233.roadweaver.features.config.WidthLevelConfig;
 import net.shiroha233.roadweaver.features.decoration.*;
+import net.shiroha233.roadweaver.features.decoration.DecorationManager;
+import net.shiroha233.roadweaver.features.landscape.LandscapeArchitectureGenerator;
+import net.shiroha233.roadweaver.features.landscape.LandscapeArchitectureType;
 import net.shiroha233.roadweaver.features.roadlogic.RoadPathCalculator;
 import net.shiroha233.roadweaver.features.terrain.EnhancedTerrainAdapter;
 import net.shiroha233.roadweaver.features.biome.BiomeConnectionStrategy;
@@ -311,10 +314,15 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         int fenceSpacing = widthConfig.calculateDecorationSpacing(FENCE_DECORATION_SPACING, roadWidth);
         int largeDecorationSpacing = widthConfig.calculateDecorationSpacing(LARGE_DECORATION_SPACING, roadWidth);
         
+        // 使用新的装饰管理器
+        DecorationManager decorationManager = DecorationManager.getInstance();
+        
+        // 距离标志装饰
         if (segmentIndex == SIGN_PLACEMENT_OFFSET || segmentIndex == middleBlockPositions.size() - SIGN_PLACEMENT_OFFSET) {
             shiftedPos = isEnd ? placePos.offset(orthogonalVector.multiply(2)) : placePos.offset(orthogonalVector.multiply(-2));
             roadDecorationPlacementPositions.add(new DistanceSignDecoration(shiftedPos, orthogonalVector, level, isEnd, String.valueOf(middleBlockPositions.size())));
         }
+        // 路灯装饰
         else if (segmentIndex % lampPostSpacing == 0) {
             boolean leftRoadSide = random.nextBoolean();
             shiftedPos = leftRoadSide ? placePos.offset(orthogonalVector.multiply(2)) : placePos.offset(orthogonalVector.multiply(-2));
@@ -340,46 +348,49 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
             int fenceLength = random.nextInt(1, 4);
             roadDecorationPlacementPositions.add(new RoadFenceDecoration(shiftedPos, orthogonalVector, level, leftRoadSide, fenceLength));
         }
-        // 大型装饰（秋千、长椅、凉亭）
+        // 使用新的装饰系统进行智能装饰放置
         else if (segmentIndex % largeDecorationSpacing == 0) {
-            List<String> availableStructures = new ArrayList<>();
-            if (config.placeSwings()) availableStructures.add("swing");
-            if (config.placeBenches()) availableStructures.add("bench");
-            if (config.placeGloriettes()) availableStructures.add("gloriette");
-            if (availableStructures.isEmpty()) return;
+            // 基于道路等级和生物群系智能选择装饰
+            Decoration selectedDecoration = decorationManager.selectDecorationForPosition(
+                level, placePos, roadType, random, orthogonalVector
+            );
             
-            // 基于宽度配置控制大型装饰概率
-            if (random.nextDouble() > widthConfig.getLargeDecorationProbability()) {
-                return;
+            if (selectedDecoration != null) {
+                // 检查装饰兼容性和最小距离
+                if (decorationManager.isDecorationCompatible(selectedDecoration, roadDecorationPlacementPositions)) {
+                    roadDecorationPlacementPositions.add(selectedDecoration);
+                }
             }
+        }
+        
+        // 景观建筑生成（在关键位置）
+        if (segmentIndex % (largeDecorationSpacing * 3) == 0 && random.nextDouble() < 0.1) {
+            generateLandscapeArchitecture(level, placePos, orthogonalVector, random, roadDecorationPlacementPositions);
+        }
+    }
+    
+    /**
+     * 生成景观建筑
+     */
+    private void generateLandscapeArchitecture(WorldGenLevel level, BlockPos placePos, Vec3i orthogonalVector, 
+                                              RandomSource random, Set<Decoration> roadDecorationPlacementPositions) {
+        LandscapeArchitectureGenerator landscapeGenerator = new LandscapeArchitectureGenerator();
+        
+        // 检查是否适合生成景观建筑
+        if (landscapeGenerator.isSuitableForLandscapeArchitecture(level, placePos)) {
+            // 选择景观建筑类型
+            LandscapeArchitectureType architectureType = landscapeGenerator.selectArchitectureType(level, placePos, random);
             
-            // 随机选择一个装饰类型
-            String chosenStructure = availableStructures.get(random.nextInt(availableStructures.size()));
-            
-            // 放置在道路边，距离由配置决定
-            boolean leftRoadSide = random.nextBoolean();
-            int distanceFromRoad = config.structureDistanceFromRoad();
-            shiftedPos = leftRoadSide 
-                ? placePos.offset(orthogonalVector.multiply(distanceFromRoad)) 
-                : placePos.offset(orthogonalVector.multiply(-distanceFromRoad));
-            shiftedPos = shiftedPos.atY(level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, shiftedPos.getX(), shiftedPos.getZ()));
-            
-            // 检查高度差是否合适
-            if (Math.abs(shiftedPos.getY() - placePos.getY()) > 2) {
-                return;
-            }
-            
-            // 根据类型创建对应的装饰
-            switch (chosenStructure) {
-                case "swing":
-                    roadDecorationPlacementPositions.add(new SwingDecoration(shiftedPos, orthogonalVector, level));
-                    break;
-                case "bench":
-                    roadDecorationPlacementPositions.add(new BenchDecoration(shiftedPos, orthogonalVector, level));
-                    break;
-                case "gloriette":
-                    roadDecorationPlacementPositions.add(new GlorietteDecoration(shiftedPos, orthogonalVector, level));
-                    break;
+            if (architectureType != null) {
+                // 生成景观建筑
+                Decoration landscapeDecoration = landscapeGenerator.generateLandscapeArchitecture(
+                    level, placePos, orthogonalVector, architectureType, random
+                );
+                
+                if (landscapeDecoration != null) {
+                    roadDecorationPlacementPositions.add(landscapeDecoration);
+                    LOGGER.debug("Generated landscape architecture: {} at {}", architectureType, placePos);
+                }
             }
         }
     }
