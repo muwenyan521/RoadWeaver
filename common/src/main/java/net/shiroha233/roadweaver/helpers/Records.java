@@ -122,4 +122,52 @@ public final class Records {
                 ).apply(instance, RoadData::new)
         );
     }
+
+    /**
+     * 地形台阶解决方案
+     */
+    public record TerrainStep(BlockPos from, BlockPos to, int fromHeight, int toHeight, 
+                             int stepCount, int stepHeight, List<BlockPos> stepPositions) {
+        public static final Codec<TerrainStep> CODEC = RecordCodecBuilder.create(instance ->
+                instance.group(
+                        BlockPos.CODEC.fieldOf("from").forGetter(TerrainStep::from),
+                        BlockPos.CODEC.fieldOf("to").forGetter(TerrainStep::to),
+                        Codec.INT.fieldOf("from_height").forGetter(TerrainStep::fromHeight),
+                        Codec.INT.fieldOf("to_height").forGetter(TerrainStep::toHeight),
+                        Codec.INT.fieldOf("step_count").forGetter(TerrainStep::stepCount),
+                        Codec.INT.fieldOf("step_height").forGetter(TerrainStep::stepHeight),
+                        BlockPos.CODEC.listOf().fieldOf("step_positions").forGetter(TerrainStep::stepPositions)
+                ).apply(instance, TerrainStep::new)
+        );
+    }
+
+    /**
+     * 坡度适应方案
+     */
+    public record SlopeAdaptation(BlockPos position, double slopeGradient, boolean needsAdaptation,
+                                List<BlockPos> affectedPositions, String strategy) {
+        public static final Codec<SlopeAdaptation> CODEC = RecordCodecBuilder.create(instance ->
+                instance.group(
+                        BlockPos.CODEC.fieldOf("position").forGetter(SlopeAdaptation::position),
+                        Codec.DOUBLE.fieldOf("slope_gradient").forGetter(SlopeAdaptation::slopeGradient),
+                        Codec.BOOL.fieldOf("needs_adaptation").forGetter(SlopeAdaptation::needsAdaptation),
+                        BlockPos.CODEC.listOf().fieldOf("affected_positions").forGetter(SlopeAdaptation::affectedPositions),
+                        Codec.STRING.fieldOf("strategy").forGetter(SlopeAdaptation::strategy)
+                ).apply(instance, SlopeAdaptation::new)
+        );
+    }
+
+    /**
+     * 生物群系边界信息
+     */
+    public record BiomeBoundary(BlockPos position, String fromBiome, String toBiome, int transitionWidth) {
+        public static final Codec<BiomeBoundary> CODEC = RecordCodecBuilder.create(instance ->
+                instance.group(
+                        BlockPos.CODEC.fieldOf("position").forGetter(BiomeBoundary::position),
+                        Codec.STRING.fieldOf("from_biome").forGetter(BiomeBoundary::fromBiome),
+                        Codec.STRING.fieldOf("to_biome").forGetter(BiomeBoundary::toBiome),
+                        Codec.INT.fieldOf("transition_width").forGetter(BiomeBoundary::transitionWidth)
+                ).apply(instance, BiomeBoundary::new)
+        );
+    }
 }
