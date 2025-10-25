@@ -236,16 +236,16 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                 // 应用道路分级系统（如果启用）
                 if (roadGradingSystem != null) {
                     // 确定道路等级
-                    RoadGradingSystem.RoadGrade roadGrade = roadGradingSystem.determineRoadGrade(segmentMiddlePos, middlePositions, segmentIndex);
+                    RoadGradingSystem.RoadGrade roadGrade = roadGradingSystem.determineRoadGrade(segmentIndex, level, segmentMiddlePos, context.random());
                     
                     // 获取对应等级的道路材料
-                    adaptedMaterials = roadGradingSystem.getRoadMaterialsForGrade(roadGrade, adaptedMaterials);
+                    adaptedMaterials = roadGradingSystem.getMaterialsForGrade(roadGrade);
                     
                     // 计算破损度
-                    double damageRate = roadGradingSystem.calculateDamageRate(segmentMiddlePos, middlePositions, segmentIndex);
+                    double damageRate = roadGradingSystem.calculateDamageRate(segmentIndex, context.random());
                     
                     // 应用破损效果
-                    adaptedMaterials = roadGradingSystem.applyRoadDamage(adaptedMaterials, damageRate, context.random());
+                    roadGradingSystem.applyRoadDamage(level, segmentMiddlePos, damageRate, context.random());
                     
                     LOGGER.debug("Road grade applied: {} at {} with damage rate: {}", roadGrade, segmentMiddlePos, damageRate);
                 }
@@ -279,8 +279,8 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                         LOGGER.debug("Bridge/tunnel needed at {}: {}", averagedPos, bridgeTunnelResult.getBridgeTunnelType());
                         
                         // 生成桥梁或隧道
-                        List<BlockPos> bridgeTunnelPath = bridgeTunnelSystem.generateBridgeTunnel(
-                            level, averagedPos, prevPos, nextPos, bridgeTunnelResult, context.random()
+                        List<BlockPos> bridgeTunnelPath = generateBridgeTunnelPath(
+                            bridgeTunnelSystem, level, averagedPos, prevPos, nextPos, bridgeTunnelResult, context.random()
                         );
                         
                         if (!bridgeTunnelPath.isEmpty()) {
@@ -599,6 +599,24 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         } else {
             LOGGER.debug("Road placement skipped at {} due to conflict resolution: {}", surfacePos, resolutionResult.generateReport());
         }
+    }
+
+    private List<BlockPos> generateBridgeTunnelPath(BridgeTunnelSystem bridgeTunnelSystem, WorldGenLevel level, 
+                                                   BlockPos currentPos, BlockPos prevPos, BlockPos nextPos,
+                                                   BridgeTunnelSystem.BridgeTunnelDetectionResult detectionResult, 
+                                                   RandomSource random) {
+        if (detectionResult.needsBridgeOrTunnel()) {
+            if (detectionResult.getBridgeType() != null) {
+                // 生成桥梁路径
+                return bridgeTunnelSystem.generateBridgePath(level, currentPos, prevPos, nextPos, 
+                                                            detectionResult.getBridgeConfig(), random);
+            } else if (detectionResult.getTunnelType() != null) {
+                // 生成隧道路径
+                return bridgeTunnelSystem.generateTunnelPath(level, currentPos, prevPos, nextPos, 
+                                                            detectionResult.getTunnelConfig(), random);
+            }
+        }
+        return Collections.emptyList();
     }
 
     private boolean placeAllowedCheck(Block blockToCheck) {

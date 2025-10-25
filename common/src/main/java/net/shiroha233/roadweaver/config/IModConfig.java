@@ -154,7 +154,7 @@ public interface IModConfig {
         return true;
     }
     
-    default int maxBridgeLength() {
+    default int maxObstacleBridgeLength() {
         return 10;
     }
     

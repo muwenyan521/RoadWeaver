@@ -114,6 +114,38 @@ public class BridgeTunnelSystem {
         }
     }
     
+    // 桥梁隧道检测结果
+    public static class BridgeTunnelDetectionResult {
+        public final boolean needsBridgeOrTunnel;
+        public final BridgeType bridgeType;
+        public final TunnelType tunnelType;
+        public final BridgeConfig bridgeConfig;
+        public final TunnelConfig tunnelConfig;
+        
+        public BridgeTunnelDetectionResult(boolean needsBridgeOrTunnel, BridgeType bridgeType, 
+                                          TunnelType tunnelType, BridgeConfig bridgeConfig, 
+                                          TunnelConfig tunnelConfig) {
+            this.needsBridgeOrTunnel = needsBridgeOrTunnel;
+            this.bridgeType = bridgeType;
+            this.tunnelType = tunnelType;
+            this.bridgeConfig = bridgeConfig;
+            this.tunnelConfig = tunnelConfig;
+        }
+        
+        public boolean needsBridgeOrTunnel() {
+            return needsBridgeOrTunnel;
+        }
+        
+        public String getBridgeTunnelType() {
+            if (bridgeType != null) {
+                return bridgeType.toString();
+            } else if (tunnelType != null) {
+                return tunnelType.toString();
+            }
+            return "NONE";
+        }
+    }
+    
     // 桥梁材料配置
     private static final Map<BridgeType, List<BlockState>> BRIDGE_MATERIALS = Map.of(
         BridgeType.RIVER_BRIDGE, List.of(
@@ -160,6 +192,33 @@ public class BridgeTunnelSystem {
     
     public BridgeTunnelSystem() {
         LOGGER.debug("BridgeTunnelSystem initialized");
+    }
+    
+    /**
+     * 检测桥梁隧道需求
+     */
+    public BridgeTunnelDetectionResult detectBridgeTunnelNeeds(LevelAccessor level, BlockPos currentPos, 
+                                                              BlockPos prevPos, BlockPos nextPos, 
+                                                              List<BlockState> roadMaterials, int roadType) {
+        IModConfig config = ConfigProvider.get();
+        
+        if (!config.enableBridgeGeneration()) {
+            return new BridgeTunnelDetectionResult(false, null, null, null, null);
+        }
+        
+        // 检测桥梁需求
+        Optional<BridgeConfig> bridgeConfig = detectBridgeNeed(level, prevPos, nextPos, roadType, level.getRandom());
+        if (bridgeConfig.isPresent()) {
+            return new BridgeTunnelDetectionResult(true, bridgeConfig.get().type, null, bridgeConfig.get(), null);
+        }
+        
+        // 检测隧道需求
+        Optional<TunnelConfig> tunnelConfig = detectTunnelNeed(level, prevPos, nextPos, roadType, level.getRandom());
+        if (tunnelConfig.isPresent()) {
+            return new BridgeTunnelDetectionResult(true, null, tunnelConfig.get().type, null, tunnelConfig.get());
+        }
+        
+        return new BridgeTunnelDetectionResult(false, null, null, null, null);
     }
     
     /**
