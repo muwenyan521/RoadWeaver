@@ -14,6 +14,7 @@ import net.shiroha233.roadweaver.features.roadlogic.RoadPathCalculator;
 import net.shiroha233.roadweaver.features.terrain.EnhancedTerrainAdapter;
 import net.shiroha233.roadweaver.features.biome.BiomeConnectionStrategy;
 import net.shiroha233.roadweaver.features.EnhancedStructureDetector;
+import net.shiroha233.roadweaver.features.ObstacleDetectionSystem.ObstacleDetectionResult;
 import net.shiroha233.roadweaver.helpers.Records;
 import net.shiroha233.roadweaver.helpers.StructureConnector;
 import net.shiroha233.roadweaver.persistence.WorldDataProvider;
