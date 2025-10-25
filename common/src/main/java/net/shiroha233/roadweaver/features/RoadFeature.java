@@ -608,12 +608,14 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         if (detectionResult.needsBridgeOrTunnel()) {
             if (detectionResult.getBridgeType() != null) {
                 // 生成桥梁路径
-                return bridgeTunnelSystem.generateBridgePath(level, currentPos, prevPos, nextPos, 
-                                                            detectionResult.getBridgeConfig(), random);
+                BridgeTunnelSystem.BridgeGenerationResult bridgeResult = 
+                    bridgeTunnelSystem.generateBridge(level, detectionResult.getBridgeConfig(), prevPos, nextPos, random);
+                return bridgeResult.success ? bridgeResult.bridgePositions : Collections.emptyList();
             } else if (detectionResult.getTunnelType() != null) {
                 // 生成隧道路径
-                return bridgeTunnelSystem.generateTunnelPath(level, currentPos, prevPos, nextPos, 
-                                                            detectionResult.getTunnelConfig(), random);
+                BridgeTunnelSystem.TunnelGenerationResult tunnelResult = 
+                    bridgeTunnelSystem.generateTunnel(level, detectionResult.getTunnelConfig(), prevPos, nextPos, random);
+                return tunnelResult.success ? tunnelResult.tunnelPositions : Collections.emptyList();
             }
         }
         return Collections.emptyList();
