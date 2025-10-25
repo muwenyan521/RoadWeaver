@@ -117,9 +117,6 @@ public class FabricModConfig {
     public static boolean getEnableBridgeGeneration() { return data.enableBridgeGeneration; }
     public static void setEnableBridgeGeneration(boolean value) { data.enableBridgeGeneration = value; }
     
-    public static int getMaxBridgeLength() { return data.maxBridgeLength; }
-    public static void setMaxBridgeLength(int value) { data.maxBridgeLength = value; }
-    
     public static boolean getEnableRavineDetection() { return data.enableRavineDetection; }
     public static void setEnableRavineDetection(boolean value) { data.enableRavineDetection = value; }
     
@@ -297,7 +294,6 @@ public class FabricModConfig {
         int obstacleDetectionRadius = 5;
         int maxDetourDistance = 15;
         boolean enableBridgeGeneration = true;
-        int maxBridgeLength = 10;
         boolean enableRavineDetection = true;
         int ravineDetectionDepth = 10;
         boolean enableSnowBiomeAdaptation = true;
