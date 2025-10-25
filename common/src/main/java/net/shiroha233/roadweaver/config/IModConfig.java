@@ -181,4 +181,110 @@ public interface IModConfig {
     default int cropProtectionRadius() {
         return 3;
     }
+
+    // 道路分级系统配置
+    default boolean enableRoadGradingSystem() {
+        return true;
+    }
+    
+    default boolean enablePrimaryRoads() {
+        return true;
+    }
+    
+    default boolean enableSecondaryRoads() {
+        return true;
+    }
+    
+    default boolean enableTertiaryRoads() {
+        return true;
+    }
+    
+    default int primaryRoadWidth() {
+        return 5;
+    }
+    
+    default int secondaryRoadWidth() {
+        return 3;
+    }
+    
+    default int tertiaryRoadWidth() {
+        return 2;
+    }
+    
+    default boolean enableRoadDamageSystem() {
+        return true;
+    }
+    
+    default int maxDamageDistance() {
+        return 100;
+    }
+    
+    default double baseDamageRate() {
+        return 0.1;
+    }
+    
+    default boolean enableMossGrowth() {
+        return true;
+    }
+    
+    default boolean enableCobwebGrowth() {
+        return true;
+    }
+    
+    default boolean enableMixedRoadSegments() {
+        return true;
+    }
+    
+    default int mixedSegmentTransitionLength() {
+        return 8;
+    }
+
+    // 桥梁隧道系统配置
+    default boolean enableBridgeTunnelSystem() {
+        return true;
+    }
+    
+    default boolean enableRiverBridges() {
+        return true;
+    }
+    
+    default boolean enableViaducts() {
+        return true;
+    }
+    
+    default boolean enableRuinedBridges() {
+        return true;
+    }
+    
+    default boolean enableCanyonBridges() {
+        return true;
+    }
+    
+    default boolean enableCanyonTunnels() {
+        return true;
+    }
+    
+    default boolean enableMountainTunnels() {
+        return true;
+    }
+    
+    default boolean enableUnderwaterTunnels() {
+        return true;
+    }
+    
+    default int maxBridgeLength() {
+        return 20;
+    }
+    
+    default int maxTunnelLength() {
+        return 30;
+    }
+    
+    default boolean enableNavigationRequirements() {
+        return true;
+    }
+    
+    default int minBridgeClearance() {
+        return 4;
+    }
 }

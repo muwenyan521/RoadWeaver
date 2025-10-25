@@ -15,6 +15,8 @@ import net.shiroha233.roadweaver.features.terrain.EnhancedTerrainAdapter;
 import net.shiroha233.roadweaver.features.biome.BiomeConnectionStrategy;
 import net.shiroha233.roadweaver.features.EnhancedStructureDetector;
 import net.shiroha233.roadweaver.features.ObstacleDetectionSystem.ObstacleDetectionResult;
+import net.shiroha233.roadweaver.features.RoadGradingSystem;
+import net.shiroha233.roadweaver.features.BridgeTunnelSystem;
 import net.shiroha233.roadweaver.helpers.Records;
 import net.shiroha233.roadweaver.helpers.StructureConnector;
 import net.shiroha233.roadweaver.persistence.WorldDataProvider;
@@ -157,6 +159,7 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         EnhancedTerrainAdapter terrainAdapter = null;
         BiomeConnectionStrategy biomeStrategy = null;
         ObstacleDetectionSystem obstacleDetector = null;
+        RoadGradingSystem roadGradingSystem = null;
         
         if (config.enableTerrainAdaptation()) {
             terrainAdapter = new EnhancedTerrainAdapter();
@@ -172,6 +175,19 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
         if (config.enableObstacleDetection()) {
             obstacleDetector = new ObstacleDetectionSystem();
             LOGGER.debug("Obstacle detection system enabled");
+        }
+        
+        // 初始化道路分级系统
+        if (config.enableRoadGradingSystem()) {
+            roadGradingSystem = new RoadGradingSystem();
+            LOGGER.debug("Road grading system enabled");
+        }
+        
+        // 初始化桥梁隧道系统
+        BridgeTunnelSystem bridgeTunnelSystem = null;
+        if (config.enableBridgeTunnelSystem()) {
+            bridgeTunnelSystem = new BridgeTunnelSystem();
+            LOGGER.debug("Bridge tunnel system enabled");
         }
 
         Set<BlockPos> posAlreadyContainsSegment = new HashSet<>();
@@ -217,6 +233,23 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                     adaptedMaterials = biomeStrategy.getAdaptedMaterials(level, averagedPos, materials, roadType);
                 }
 
+                // 应用道路分级系统（如果启用）
+                if (roadGradingSystem != null) {
+                    // 确定道路等级
+                    RoadGradingSystem.RoadGrade roadGrade = roadGradingSystem.determineRoadGrade(segmentMiddlePos, middlePositions, segmentIndex);
+                    
+                    // 获取对应等级的道路材料
+                    adaptedMaterials = roadGradingSystem.getRoadMaterialsForGrade(roadGrade, adaptedMaterials);
+                    
+                    // 计算破损度
+                    double damageRate = roadGradingSystem.calculateDamageRate(segmentMiddlePos, middlePositions, segmentIndex);
+                    
+                    // 应用破损效果
+                    adaptedMaterials = roadGradingSystem.applyRoadDamage(adaptedMaterials, damageRate, context.random());
+                    
+                    LOGGER.debug("Road grade applied: {} at {} with damage rate: {}", roadGrade, segmentMiddlePos, damageRate);
+                }
+
                 // 障碍物检测与绕行（如果启用）
                 if (obstacleDetector != null) {
                     ObstacleDetectionResult obstacleResult = obstacleDetector.detectObstacles(level, averagedPos, adaptedMaterials, roadType);
@@ -232,6 +265,30 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                                 }
                                 continue; // 跳过原始位置
                             }
+                        }
+                    }
+                }
+
+                // 桥梁隧道系统（如果启用）
+                if (bridgeTunnelSystem != null) {
+                    // 检测是否需要桥梁或隧道
+                    BridgeTunnelSystem.BridgeTunnelDetectionResult bridgeTunnelResult = 
+                        bridgeTunnelSystem.detectBridgeTunnelNeeds(level, averagedPos, prevPos, nextPos, adaptedMaterials, roadType);
+                    
+                    if (bridgeTunnelResult.needsBridgeOrTunnel()) {
+                        LOGGER.debug("Bridge/tunnel needed at {}: {}", averagedPos, bridgeTunnelResult.getBridgeTunnelType());
+                        
+                        // 生成桥梁或隧道
+                        List<BlockPos> bridgeTunnelPath = bridgeTunnelSystem.generateBridgeTunnel(
+                            level, averagedPos, prevPos, nextPos, bridgeTunnelResult, context.random()
+                        );
+                        
+                        if (!bridgeTunnelPath.isEmpty()) {
+                            // 在桥梁/隧道路径上放置道路
+                            for (BlockPos bridgeTunnelPos : bridgeTunnelPath) {
+                                placeEnhancedOnSurface(level, bridgeTunnelPos, adaptedMaterials, roadType, context.random(), terrainAdapter);
+                            }
+                            continue; // 跳过原始位置
                         }
                     }
                 }

@@ -141,6 +141,86 @@ public class ForgeJsonConfig {
     public static int getCropProtectionRadius() { return data.cropProtectionRadius; }
     public static void setCropProtectionRadius(int value) { data.cropProtectionRadius = value; }
 
+    // 道路分级系统配置
+    public static boolean getEnableRoadGradingSystem() { return data.enableRoadGradingSystem; }
+    public static void setEnableRoadGradingSystem(boolean value) { data.enableRoadGradingSystem = value; }
+    
+    public static boolean getEnablePrimaryRoads() { return data.enablePrimaryRoads; }
+    public static void setEnablePrimaryRoads(boolean value) { data.enablePrimaryRoads = value; }
+    
+    public static boolean getEnableSecondaryRoads() { return data.enableSecondaryRoads; }
+    public static void setEnableSecondaryRoads(boolean value) { data.enableSecondaryRoads = value; }
+    
+    public static boolean getEnableTertiaryRoads() { return data.enableTertiaryRoads; }
+    public static void setEnableTertiaryRoads(boolean value) { data.enableTertiaryRoads = value; }
+    
+    public static int getPrimaryRoadWidth() { return data.primaryRoadWidth; }
+    public static void setPrimaryRoadWidth(int value) { data.primaryRoadWidth = value; }
+    
+    public static int getSecondaryRoadWidth() { return data.secondaryRoadWidth; }
+    public static void setSecondaryRoadWidth(int value) { data.secondaryRoadWidth = value; }
+    
+    public static int getTertiaryRoadWidth() { return data.tertiaryRoadWidth; }
+    public static void setTertiaryRoadWidth(int value) { data.tertiaryRoadWidth = value; }
+    
+    public static boolean getEnableRoadDamageSystem() { return data.enableRoadDamageSystem; }
+    public static void setEnableRoadDamageSystem(boolean value) { data.enableRoadDamageSystem = value; }
+    
+    public static int getMaxDamageDistance() { return data.maxDamageDistance; }
+    public static void setMaxDamageDistance(int value) { data.maxDamageDistance = value; }
+    
+    public static double getBaseDamageRate() { return data.baseDamageRate; }
+    public static void setBaseDamageRate(double value) { data.baseDamageRate = value; }
+    
+    public static boolean getEnableMossGrowth() { return data.enableMossGrowth; }
+    public static void setEnableMossGrowth(boolean value) { data.enableMossGrowth = value; }
+    
+    public static boolean getEnableCobwebGrowth() { return data.enableCobwebGrowth; }
+    public static void setEnableCobwebGrowth(boolean value) { data.enableCobwebGrowth = value; }
+    
+    public static boolean getEnableMixedRoadSegments() { return data.enableMixedRoadSegments; }
+    public static void setEnableMixedRoadSegments(boolean value) { data.enableMixedRoadSegments = value; }
+    
+    public static int getMixedSegmentTransitionLength() { return data.mixedSegmentTransitionLength; }
+    public static void setMixedSegmentTransitionLength(int value) { data.mixedSegmentTransitionLength = value; }
+
+    // 桥梁隧道系统配置
+    public static boolean getEnableBridgeTunnelSystem() { return data.enableBridgeTunnelSystem; }
+    public static void setEnableBridgeTunnelSystem(boolean value) { data.enableBridgeTunnelSystem = value; }
+    
+    public static boolean getEnableRiverBridges() { return data.enableRiverBridges; }
+    public static void setEnableRiverBridges(boolean value) { data.enableRiverBridges = value; }
+    
+    public static boolean getEnableViaducts() { return data.enableViaducts; }
+    public static void setEnableViaducts(boolean value) { data.enableViaducts = value; }
+    
+    public static boolean getEnableRuinedBridges() { return data.enableRuinedBridges; }
+    public static void setEnableRuinedBridges(boolean value) { data.enableRuinedBridges = value; }
+    
+    public static boolean getEnableCanyonBridges() { return data.enableCanyonBridges; }
+    public static void setEnableCanyonBridges(boolean value) { data.enableCanyonBridges = value; }
+    
+    public static boolean getEnableCanyonTunnels() { return data.enableCanyonTunnels; }
+    public static void setEnableCanyonTunnels(boolean value) { data.enableCanyonTunnels = value; }
+    
+    public static boolean getEnableMountainTunnels() { return data.enableMountainTunnels; }
+    public static void setEnableMountainTunnels(boolean value) { data.enableMountainTunnels = value; }
+    
+    public static boolean getEnableUnderwaterTunnels() { return data.enableUnderwaterTunnels; }
+    public static void setEnableUnderwaterTunnels(boolean value) { data.enableUnderwaterTunnels = value; }
+    
+    public static int getMaxBridgeLength() { return data.maxBridgeLength; }
+    public static void setMaxBridgeLength(int value) { data.maxBridgeLength = value; }
+    
+    public static int getMaxTunnelLength() { return data.maxTunnelLength; }
+    public static void setMaxTunnelLength(int value) { data.maxTunnelLength = value; }
+    
+    public static boolean getEnableNavigationRequirements() { return data.enableNavigationRequirements; }
+    public static void setEnableNavigationRequirements(boolean value) { data.enableNavigationRequirements = value; }
+    
+    public static int getMinBridgeClearance() { return data.minBridgeClearance; }
+    public static void setMinBridgeClearance(int value) { data.minBridgeClearance = value; }
+
     public static void load() {
         if (Files.exists(CONFIG_PATH)) {
             try {
