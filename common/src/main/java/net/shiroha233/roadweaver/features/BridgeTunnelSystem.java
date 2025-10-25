@@ -136,6 +136,22 @@ public class BridgeTunnelSystem {
             return needsBridgeOrTunnel;
         }
         
+        public BridgeType getBridgeType() {
+            return bridgeType;
+        }
+        
+        public TunnelType getTunnelType() {
+            return tunnelType;
+        }
+        
+        public BridgeConfig getBridgeConfig() {
+            return bridgeConfig;
+        }
+        
+        public TunnelConfig getTunnelConfig() {
+            return tunnelConfig;
+        }
+        
         public String getBridgeTunnelType() {
             if (bridgeType != null) {
                 return bridgeType.toString();
