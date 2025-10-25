@@ -89,6 +89,55 @@ public class FabricModConfig {
     public static boolean getPlaceGloriettes() { return data.placeGloriettes; }
     public static void setPlaceGloriettes(boolean value) { data.placeGloriettes = value; }
     
+    // 障碍物检测与绕行配置
+    public static boolean getEnableObstacleDetection() { return data.enableObstacleDetection; }
+    public static void setEnableObstacleDetection(boolean value) { data.enableObstacleDetection = value; }
+    
+    public static boolean getEnableTreeDetection() { return data.enableTreeDetection; }
+    public static void setEnableTreeDetection(boolean value) { data.enableTreeDetection = value; }
+    
+    public static boolean getEnableWaterDetection() { return data.enableWaterDetection; }
+    public static void setEnableWaterDetection(boolean value) { data.enableWaterDetection = value; }
+    
+    public static boolean getEnableCropProtection() { return data.enableCropProtection; }
+    public static void setEnableCropProtection(boolean value) { data.enableCropProtection = value; }
+    
+    public static boolean getEnableNarrowAreaAdaptation() { return data.enableNarrowAreaAdaptation; }
+    public static void setEnableNarrowAreaAdaptation(boolean value) { data.enableNarrowAreaAdaptation = value; }
+    
+    public static boolean getEnableSpecialTerrainHandling() { return data.enableSpecialTerrainHandling; }
+    public static void setEnableSpecialTerrainHandling(boolean value) { data.enableSpecialTerrainHandling = value; }
+    
+    public static int getObstacleDetectionRadius() { return data.obstacleDetectionRadius; }
+    public static void setObstacleDetectionRadius(int value) { data.obstacleDetectionRadius = value; }
+    
+    public static int getMaxDetourDistance() { return data.maxDetourDistance; }
+    public static void setMaxDetourDistance(int value) { data.maxDetourDistance = value; }
+    
+    public static boolean getEnableBridgeGeneration() { return data.enableBridgeGeneration; }
+    public static void setEnableBridgeGeneration(boolean value) { data.enableBridgeGeneration = value; }
+    
+    public static int getMaxBridgeLength() { return data.maxBridgeLength; }
+    public static void setMaxBridgeLength(int value) { data.maxBridgeLength = value; }
+    
+    public static boolean getEnableRavineDetection() { return data.enableRavineDetection; }
+    public static void setEnableRavineDetection(boolean value) { data.enableRavineDetection = value; }
+    
+    public static int getRavineDetectionDepth() { return data.ravineDetectionDepth; }
+    public static void setRavineDetectionDepth(int value) { data.ravineDetectionDepth = value; }
+    
+    public static boolean getEnableSnowBiomeAdaptation() { return data.enableSnowBiomeAdaptation; }
+    public static void setEnableSnowBiomeAdaptation(boolean value) { data.enableSnowBiomeAdaptation = value; }
+    
+    public static boolean getEnableRedwoodForestAdaptation() { return data.enableRedwoodForestAdaptation; }
+    public static void setEnableRedwoodForestAdaptation(boolean value) { data.enableRedwoodForestAdaptation = value; }
+    
+    public static int getNarrowAreaMinWidth() { return data.narrowAreaMinWidth; }
+    public static void setNarrowAreaMinWidth(int value) { data.narrowAreaMinWidth = value; }
+    
+    public static int getCropProtectionRadius() { return data.cropProtectionRadius; }
+    public static void setCropProtectionRadius(int value) { data.cropProtectionRadius = value; }
+    
     public static void load() {
         if (Files.exists(CONFIG_PATH)) {
             try {
@@ -157,6 +206,24 @@ public class FabricModConfig {
         boolean placeSwings = false;
         boolean placeBenches = false;
         boolean placeGloriettes = false;
+        
+        // 障碍物检测与绕行配置
+        boolean enableObstacleDetection = true;
+        boolean enableTreeDetection = true;
+        boolean enableWaterDetection = true;
+        boolean enableCropProtection = true;
+        boolean enableNarrowAreaAdaptation = true;
+        boolean enableSpecialTerrainHandling = true;
+        int obstacleDetectionRadius = 5;
+        int maxDetourDistance = 15;
+        boolean enableBridgeGeneration = true;
+        int maxBridgeLength = 10;
+        boolean enableRavineDetection = true;
+        int ravineDetectionDepth = 10;
+        boolean enableSnowBiomeAdaptation = true;
+        boolean enableRedwoodForestAdaptation = true;
+        int narrowAreaMinWidth = 3;
+        int cropProtectionRadius = 3;
     }
     
     private static List<String> tokenizeToList(String raw) {

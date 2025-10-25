@@ -146,19 +146,31 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
 
         int averagingRadius = config.averagingRadius();
         List<Records.RoadData> roadDataList = dataProvider.getRoadDataList(serverLevel);
-        if (roadDataList == null) return;
+        if (roadDataList == null) {
+            LOGGER.debug("No road data available for enhanced road logic");
+            return;
+        }
         ChunkPos currentChunkPos = new ChunkPos(context.origin());
 
         // 初始化增强系统
         EnhancedTerrainAdapter terrainAdapter = null;
         BiomeConnectionStrategy biomeStrategy = null;
+        ObstacleDetectionSystem obstacleDetector = null;
         
         if (config.enableTerrainAdaptation()) {
             terrainAdapter = new EnhancedTerrainAdapter();
+            LOGGER.debug("Enhanced terrain adaptation enabled");
         }
         
         if (config.enableBiomeConnectionStrategy()) {
             biomeStrategy = new BiomeConnectionStrategy();
+            LOGGER.debug("Biome connection strategy enabled");
+        }
+        
+        // 初始化障碍物检测系统
+        if (config.enableObstacleDetection()) {
+            obstacleDetector = new ObstacleDetectionSystem();
+            LOGGER.debug("Obstacle detection system enabled");
         }
 
         Set<BlockPos> posAlreadyContainsSegment = new HashSet<>();
@@ -202,6 +214,25 @@ public class RoadFeature extends Feature<RoadFeatureConfig> {
                 List<BlockState> adaptedMaterials = materials;
                 if (biomeStrategy != null) {
                     adaptedMaterials = biomeStrategy.getAdaptedMaterials(level, averagedPos, materials, roadType);
+                }
+
+                // 障碍物检测与绕行（如果启用）
+                if (obstacleDetector != null) {
+                    ObstacleDetectionResult obstacleResult = obstacleDetector.detectObstacles(level, averagedPos, adaptedMaterials, roadType);
+                    if (obstacleResult.hasObstacles()) {
+                        LOGGER.debug("Obstacles detected at {}: {}", averagedPos, obstacleResult.getObstacleTypes());
+                        if (obstacleResult.shouldReroute()) {
+                            // 应用绕行路径
+                            List<BlockPos> reroutePath = obstacleDetector.generateReroutePath(level, averagedPos, prevPos, nextPos, obstacleResult);
+                            if (!reroutePath.isEmpty()) {
+                                // 在绕行路径上放置道路
+                                for (BlockPos reroutePos : reroutePath) {
+                                    placeEnhancedOnSurface(level, reroutePos, adaptedMaterials, roadType, context.random(), terrainAdapter);
+                                }
+                                continue; // 跳过原始位置
+                            }
+                        }
+                    }
                 }
 
                 RandomSource random = context.random();

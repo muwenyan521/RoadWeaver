@@ -116,4 +116,69 @@ public interface IModConfig {
     default int biomeTransitionWidth() {
         return 8;
     }
+
+    // 障碍物检测与绕行配置
+    default boolean enableObstacleDetection() {
+        return true;
+    }
+    
+    default boolean enableTreeDetection() {
+        return true;
+    }
+    
+    default boolean enableWaterDetection() {
+        return true;
+    }
+    
+    default boolean enableCropProtection() {
+        return true;
+    }
+    
+    default boolean enableNarrowAreaAdaptation() {
+        return true;
+    }
+    
+    default boolean enableSpecialTerrainHandling() {
+        return true;
+    }
+    
+    default int obstacleDetectionRadius() {
+        return 5;
+    }
+    
+    default int maxDetourDistance() {
+        return 15;
+    }
+    
+    default boolean enableBridgeGeneration() {
+        return true;
+    }
+    
+    default int maxBridgeLength() {
+        return 10;
+    }
+    
+    default boolean enableRavineDetection() {
+        return true;
+    }
+    
+    default int ravineDetectionDepth() {
+        return 10;
+    }
+    
+    default boolean enableSnowBiomeAdaptation() {
+        return true;
+    }
+    
+    default boolean enableRedwoodForestAdaptation() {
+        return true;
+    }
+    
+    default int narrowAreaMinWidth() {
+        return 3;
+    }
+    
+    default int cropProtectionRadius() {
+        return 3;
+    }
 }
